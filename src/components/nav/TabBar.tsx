@@ -1,13 +1,11 @@
 import React from 'react';
-import { Animated, Platform, Pressable, View, useWindowDimensions } from 'react-native';
+import { Animated, Pressable, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import { layout } from '../../theme/tokens';
 import { useApp } from '../../state/store';
-import { useStudyDay, useToday } from '../../state/hooks';
-import { formatCompact } from '../../domain/study';
 import { BrandMark, Text, focusRing } from '../ui';
 import { PulseDot, useToggleAnim } from '../motion';
 
@@ -62,22 +60,22 @@ function TabItem({ name, title, focused, onPress, running, wide }: { name: strin
   const fg = focused ? t.colors.onInk : t.colors.text;
   const icon = (
     <Animated.View style={{ transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [1, 1.1] }) }] }}>
-      <Ionicons name={(focused ? on : off) as never} size={wide ? 21 : 20} color={fg} />
+      <Ionicons name={(focused ? on : off) as never} size={wide ? 22 : 21} color={fg} />
       {running && name === 'focus' ? <View style={{ position: 'absolute', top: -2, right: -4 }}><PulseDot color={t.colors.success} size={9} /></View> : null}
     </Animated.View>
   );
   return (
     <Pressable accessibilityRole="tab" accessibilityState={{ selected: focused }} accessibilityLabel={running && name === 'focus' ? `${title}, timer running` : title} onPress={onPress}
       style={(s: { pressed: boolean; focused?: boolean; hovered?: boolean }) => [wide ? {
-        height: 48, paddingHorizontal: 16, borderRadius: 24, flexDirection: 'row', alignItems: 'center', gap: 12, alignSelf: 'stretch',
+        height: 54, paddingHorizontal: 18, borderRadius: 27, flexDirection: 'row', alignItems: 'center', gap: 12, alignSelf: 'stretch',
         backgroundColor: focused ? t.colors.ink : s.hovered ? t.colors.surfaceSunken : 'transparent', opacity: s.pressed ? 0.8 : 1,
       } : {
         // Phone: icon over label. The active tab is a black capsule.
-        flex: focused ? (roomy ? 1.25 : 1.9) : 1, minWidth: 0, height: roomy || focused ? 48 : 44, borderRadius: 20, alignItems: 'center', justifyContent: 'center', gap: 2,
+        flex: focused ? (roomy ? 1.25 : 1.9) : 1, minWidth: 0, height: roomy || focused ? 52 : 48, borderRadius: 22, alignItems: 'center', justifyContent: 'center', gap: 2,
         backgroundColor: focused ? t.colors.ink : 'transparent', opacity: s.pressed ? 0.8 : 1,
       }, focusRing(t, s.focused)]}>
       {icon}
-      {showLabel ? <Text variant="caption" fit numberOfLines={1} style={{ color: fg, fontSize: wide ? 14 : 10.5, lineHeight: wide ? 19 : 13, flexShrink: 1, fontWeight: focused ? '700' : '500' }}>{title}</Text> : null}
+      {showLabel ? <Text variant="caption" fit numberOfLines={1} style={{ color: fg, fontSize: wide ? 15 : 10.5, lineHeight: wide ? 20 : 13, flexShrink: 1, fontWeight: focused ? '700' : '500' }}>{title}</Text> : null}
     </Pressable>
   );
 }
@@ -123,32 +121,6 @@ function Sidebar(props: BarProps) {
           ))}
         </View>
       </View>
-      {Platform.OS === 'web' ? <SidebarFooter /> : null}
-    </View>
-  );
-}
-
-/** Web sidebar only: today's progress at a glance, with a one-click way into the focus timer. */
-function SidebarFooter() {
-  const t = useTheme();
-  const router = useRouter();
-  const total = useStudyDay(useToday()).total;
-  const pct = Math.max(0, Math.min(100, total.pct));
-  return (
-    <View style={{ backgroundColor: t.colors.hero, borderRadius: t.radius.xl, padding: t.spacing.lg, gap: t.spacing.md }}>
-      <View style={{ gap: 2 }}>
-        <Text variant="caption" tone="heroMuted">Today</Text>
-        <Text variant="title" tone="hero">{Math.round(pct)}% done</Text>
-        <Text variant="caption" tone="heroMuted">{formatCompact(total.actualSec)} of {formatCompact(total.targetSec)}</Text>
-      </View>
-      <View style={{ height: 6, borderRadius: 3, backgroundColor: t.colors.heroTrack, overflow: 'hidden' }}>
-        <View style={{ width: `${pct}%`, height: '100%', borderRadius: 3, backgroundColor: t.colors.lime }} />
-      </View>
-      <Pressable accessibilityRole="button" accessibilityLabel="Start focus" onPress={() => router.navigate('/focus' as never)}
-        style={(s: { pressed: boolean; focused?: boolean }) => [{ height: 44, borderRadius: 22, backgroundColor: t.colors.lime, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, opacity: s.pressed ? 0.85 : 1 }, focusRing(t, s.focused)]}>
-        <Ionicons name="play" size={16} color={t.colors.onLime} />
-        <Text variant="bodyStrong" tone="onLime">Start focus</Text>
-      </Pressable>
     </View>
   );
 }

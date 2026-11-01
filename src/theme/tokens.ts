@@ -18,8 +18,6 @@ export type Palette = {
   ink: string; onInk: string;
   /** Always-dark hero surface (progress card, running timer) with the lime highlight used on it. */
   hero: string; heroText: string; heroMuted: string; heroTrack: string; lime: string; onLime: string;
-  /** Distinct accents for the Studied / Target / Left stats on the always-dark hero card (same in both themes). */
-  heroStudied: string; heroTarget: string; heroLeft: string;
   /** Vertical background gradient stops, top → bottom (lilac → cream → peach → lilac). */
   grad: string[];
   /** Status accents used on timetable cards. */
@@ -39,7 +37,6 @@ const dark: Palette = {
   overlay: 'rgba(8,5,14,0.72)', shadow: '#000000', track: '#2F2740', focusRing: '#CDBFFF',
   ink: '#F7F3FB', onInk: '#16111F',
   hero: '#2B2A31', heroText: '#FFFFFF', heroMuted: '#A9A7B3', heroTrack: '#46453A', lime: '#D8E67F', onLime: '#1A2108',
-  heroStudied: '#D8E67F', heroTarget: '#BBA8FF', heroLeft: '#F7BD55',
   grad: ['#2D2150', '#1D1730', '#221826', '#1C1530'],
   blue: '#5B8CFF', violet: '#A98BEF',
   series: ['#BBA8FF', '#4BE0A8', '#F7BD55', '#74D6F7', '#FF8F99', '#D8E67F', '#FFA373', '#8FA8FF'],
@@ -58,7 +55,6 @@ const light: Palette = {
   overlay: 'rgba(23,22,28,0.46)', shadow: '#5B4570', track: '#EADFEA', focusRing: '#6A4BE0',
   ink: '#141318', onInk: '#FFFFFF',
   hero: '#26262B', heroText: '#FFFFFF', heroMuted: '#A9A7B3', heroTrack: '#46453A', lime: '#D8E67F', onLime: '#1A2108',
-  heroStudied: '#D8E67F', heroTarget: '#BBA8FF', heroLeft: '#F7BD55',
   grad: ['#DDBDF4', '#F4E0E6', '#F6E6DA', '#F1D2C5', '#DCC5F3'],
   blue: '#2F6BFF', violet: '#A98BEF',
   series: ['#6A4BE0', '#0A7048', '#B36B00', '#0A7EA4', '#C0243A', '#5E7D12', '#C25512', '#3550D6'],
@@ -72,21 +68,21 @@ const light: Palette = {
 export const palettes: Record<ThemeName, Palette> = { dark, light };
 
 export const spacing = { xxs: 2, xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32, huge: 48 } as const;
-export const radius = { sm: 8, md: 12, lg: 18, xl: 24, pill: 999 } as const;
+export const radius = { sm: 10, md: 14, lg: 22, xl: 30, pill: 999 } as const;
 /** Minimum touch target (dp) — Material/WCAG 2.5.5 guidance. */
 export const MIN_TOUCH = 48;
 
 export const type = {
-  hero: { fontSize: 40, lineHeight: 46, fontWeight: '800' as const, letterSpacing: -1.2 },
-  display: { fontSize: 30, lineHeight: 35, fontWeight: '800' as const, letterSpacing: -0.9 },
-  displayLight: { fontSize: 30, lineHeight: 35, fontWeight: '300' as const, letterSpacing: -0.9 },
-  title: { fontSize: 21, lineHeight: 27, fontWeight: '700' as const, letterSpacing: -0.4 },
-  heading: { fontSize: 17, lineHeight: 22, fontWeight: '700' as const, letterSpacing: -0.2 },
-  body: { fontSize: 15, lineHeight: 21, fontWeight: '400' as const },
-  bodyStrong: { fontSize: 15, lineHeight: 21, fontWeight: '600' as const },
-  caption: { fontSize: 12.5, lineHeight: 17, fontWeight: '400' as const },
-  label: { fontSize: 12.5, lineHeight: 17, fontWeight: '600' as const },
-  mono: { fontSize: 15, lineHeight: 21, fontWeight: '600' as const, fontVariant: ['tabular-nums'] as ('tabular-nums')[] },
+  hero: { fontSize: 44, lineHeight: 50, fontWeight: '800' as const, letterSpacing: -1.4 },
+  display: { fontSize: 34, lineHeight: 40, fontWeight: '800' as const, letterSpacing: -1 },
+  displayLight: { fontSize: 34, lineHeight: 40, fontWeight: '300' as const, letterSpacing: -1 },
+  title: { fontSize: 24, lineHeight: 30, fontWeight: '700' as const, letterSpacing: -0.5 },
+  heading: { fontSize: 18, lineHeight: 24, fontWeight: '700' as const, letterSpacing: -0.2 },
+  body: { fontSize: 16, lineHeight: 23, fontWeight: '400' as const },
+  bodyStrong: { fontSize: 16, lineHeight: 23, fontWeight: '600' as const },
+  caption: { fontSize: 13, lineHeight: 18, fontWeight: '400' as const },
+  label: { fontSize: 13, lineHeight: 18, fontWeight: '600' as const },
+  mono: { fontSize: 16, lineHeight: 22, fontWeight: '600' as const, fontVariant: ['tabular-nums'] as ('tabular-nums')[] },
 } as const;
 /**
  * Type scale factor for a viewport width. Text keeps its normal size on every real phone, tablet and desktop; only

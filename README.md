@@ -306,5 +306,3 @@ Screens follow `SCREENS.md`: data via hooks, mutations only via `src/state/actio
 ## Windows PowerShell
 
 The test scripts use `cross-env` so timezone-dependent tests run in PowerShell and Command Prompt. After installing dependencies, use `npm run test:all`. Start mobile Expo Go development with `npx expo start`; start the web build with `npx expo start --web`. The root Expo Router Stack remains mounted while the app initializes local storage so deep links and initial navigation can initialize correctly.
-#   R h y t h m  
- 

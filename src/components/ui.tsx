@@ -48,9 +48,6 @@ function sampleGradient(stops: string[], f: number): string {
 }
 const BANDS = 48;
 
-/** Web: the content column grows on big monitors so wide screens are not mostly empty gradient. */
-export const webContentWidth = (winW: number) => (winW >= 1700 ? 1320 : winW >= 1440 ? 1200 : layout.contentMaxWidth);
-
 /**
  * The reference's soft lilac → cream → peach → lilac gradient. Web uses a real CSS gradient; native stacks thin
  * interpolated bands (no extra dependency, identical look, never banded because adjacent bands differ by 1–2 levels).
@@ -79,12 +76,9 @@ export function Screen({ children, scroll = true, padded = true, footer, edges =
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const shared = React.useContext(SharedAmbientContext);
-  const winW = useWindowDimensions().width;
-  const metrics = responsiveMetrics(winW);
-  // Web only: roomier desktop pages (extra headroom above the header, a wider column on big monitors).
-  const webDesktop = Platform.OS === 'web' && metrics.desktop;
+  const metrics = responsiveMetrics(useWindowDimensions().width);
   const pad = padded ? metrics.horizontalPadding : 0;
-  const content = { width: '100%' as const, maxWidth: Platform.OS === 'web' ? webContentWidth(winW) : layout.contentMaxWidth, paddingHorizontal: pad, paddingTop: padded ? (webDesktop ? t.spacing.xxl : t.spacing.md) : 0, paddingBottom: pad + t.spacing.xxl, gap: t.spacing.md + 2 };
+  const content = { width: '100%' as const, maxWidth: layout.contentMaxWidth, paddingHorizontal: pad, paddingTop: padded ? t.spacing.md : 0, paddingBottom: pad + t.spacing.xxxl, gap: t.spacing.lg };
   const body = scroll ? (
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ alignItems: 'center', flexGrow: 1 }} showsVerticalScrollIndicator={false}>
       <View style={[content, contentStyle]}>{children}</View>
@@ -176,7 +170,7 @@ export function Card({ children, style, onPress, accessibilityLabel, tone = 'sur
   const narrow = useWindowDimensions().width < 380;
   const bg = { surface: t.colors.surface, raised: t.colors.surfaceRaised, sunken: t.colors.surfaceSunken, accent: t.colors.accentSoft, hero: t.colors.hero }[tone];
   const flat = tone === 'sunken';
-  const base: ViewStyle = { backgroundColor: bg, borderRadius: t.radius.xl, borderWidth: tone === 'sunken' || t.isDark ? 1 : 0, borderColor: t.colors.border, padding: narrow ? t.spacing.md : t.spacing.lg, ...(flat ? {} : softShadow(t, tone === 'hero' ? 1.2 : 0.6)) };
+  const base: ViewStyle = { backgroundColor: bg, borderRadius: t.radius.xl, borderWidth: tone === 'sunken' || t.isDark ? 1 : 0, borderColor: t.colors.border, padding: narrow ? t.spacing.lg : t.spacing.xl, ...(flat ? {} : softShadow(t, tone === 'hero' ? 1.2 : 0.6)) };
   if (!onPress) return <View style={[base, style]}>{children}</View>;
   return <PressableCard base={base} style={style} onPress={onPress} accessibilityLabel={accessibilityLabel}>{children}</PressableCard>;
 }
@@ -197,29 +191,17 @@ export function Row({ children, style, gap, between, wrap, align = 'center' }: {
   return <View style={[{ flexDirection: 'row', alignItems: align, gap: gap ?? t.spacing.md, justifyContent: between ? 'space-between' : 'flex-start', flexWrap: wrap ? 'wrap' : 'nowrap' }, style]}>{children}</View>;
 }
 
-/**
- * Responsive columns: 1 on phones, 2 on tablets/desktop (3 only on very wide screens when `max` allows). Children keep their own height.
- * `minCols={2}` keeps two columns even on phones (for small, compact cards such as Today's study) with equal-height cells.
- */
-export function Grid({ children, max = 2, gap, basis, minCols = 1 }: { children: React.ReactNode; max?: 1 | 2 | 3; gap?: number; /** Minimum column width before wrapping (default 300 / 340). */ basis?: number; /** Never drop below this many columns (even on phones). */ minCols?: 1 | 2 }) {
+/** Responsive columns: 1 on phones, 2 on tablets/desktop (3 only on very wide screens when `max` allows). Children keep their own height. */
+export function Grid({ children, max = 2, gap }: { children: React.ReactNode; max?: 1 | 2 | 3; gap?: number }) {
   const t = useTheme();
   const m = responsiveMetrics(useWindowDimensions().width);
-  const cols = Math.max(minCols, Math.min(max, m.columns));
+  const cols = Math.min(max, m.columns);
   const items = React.Children.toArray(children).filter(Boolean);
-  const g = gap ?? (minCols > 1 ? t.spacing.sm + 2 : t.spacing.md + 2);
+  const g = gap ?? t.spacing.lg;
   if (cols === 1) return <View style={{ gap: g }}>{items}</View>;
-  if (minCols > 1) {
-    // Fixed percentage columns so two compact cards always sit side by side, however narrow the phone is.
-    const pct = cols === 3 ? '31%' : '47.5%';
-    return (
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: g, alignItems: 'stretch' }}>
-        {items.map((c, i) => <View key={i} style={{ flexGrow: 1, flexShrink: 1, flexBasis: pct, minWidth: 0 }}>{c}</View>)}
-      </View>
-    );
-  }
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: g, alignItems: 'flex-start' }}>
-      {items.map((c, i) => <View key={i} style={{ flexGrow: 1, flexShrink: 1, flexBasis: basis ?? (cols === 3 ? 280 : 320), minWidth: 0 }}>{c}</View>)}
+      {items.map((c, i) => <View key={i} style={{ flexGrow: 1, flexShrink: 1, flexBasis: cols === 3 ? 300 : 340, minWidth: 0 }}>{c}</View>)}
     </View>
   );
 }
@@ -227,9 +209,9 @@ export function Grid({ children, max = 2, gap, basis, minCols = 1 }: { children:
 export function SectionHeader({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
   const t = useTheme();
   return (
-    <Row between style={{ marginTop: t.spacing.xs }}>
+    <Row between style={{ marginTop: t.spacing.sm }}>
       <Text variant="heading" accessibilityRole="header">{title}</Text>
-      {action && onAction ? <Pressable accessibilityRole="button" onPress={onAction} hitSlop={12} style={(s: { pressed: boolean; focused?: boolean }) => [{ minHeight: 40, justifyContent: 'center', borderRadius: t.radius.md }, focusRing(t, s.focused)]}><Text variant="bodyStrong" tone="accent">{action}</Text></Pressable> : null}
+      {action && onAction ? <Pressable accessibilityRole="button" onPress={onAction} hitSlop={12} style={(s: { pressed: boolean; focused?: boolean }) => [{ minHeight: t.minTouch, justifyContent: 'center', borderRadius: t.radius.md }, focusRing(t, s.focused)]}><Text variant="bodyStrong" tone="accent">{action}</Text></Pressable> : null}
     </Row>
   );
 }
@@ -251,7 +233,7 @@ export function CardTitle({ icon, title, right, color }: { icon: IconName; title
   return (
     <Row between>
       <Row gap={t.spacing.sm} style={{ flex: 1 }}>
-        <IconBadge icon={icon} color={color} size={32} />
+        <IconBadge icon={icon} color={color} size={36} />
         <Text variant="heading" accessibilityRole="header">{title}</Text>
       </Row>
       {right}
@@ -266,8 +248,8 @@ export function QuickAction({ icon, label, hint, onPress, color }: { icon: IconN
   return (
     <Animated.View style={[press.style, { flex: 1, minWidth: 140 }]}>
       <Pressable accessibilityRole="button" accessibilityLabel={hint ? `${label}. ${hint}` : label} onPress={onPress} onPressIn={press.onPressIn} onPressOut={press.onPressOut}
-        style={(s: { pressed: boolean; focused?: boolean }) => [{ backgroundColor: t.colors.surface, borderRadius: t.radius.xl, borderWidth: 1, borderColor: t.colors.border, padding: t.spacing.md, gap: t.spacing.sm, minHeight: 96, opacity: s.pressed ? 0.9 : 1 }, softShadow(t, 0.5), focusRing(t, s.focused)]}>
-        <IconBadge icon={icon} color={color} size={38} />
+        style={(s: { pressed: boolean; focused?: boolean }) => [{ backgroundColor: t.colors.surface, borderRadius: t.radius.xl, borderWidth: 1, borderColor: t.colors.border, padding: t.spacing.lg, gap: t.spacing.sm, minHeight: 116, opacity: s.pressed ? 0.9 : 1 }, softShadow(t, 0.5), focusRing(t, s.focused)]}>
+        <IconBadge icon={icon} color={color} size={44} />
         <Text variant="bodyStrong">{label}</Text>
         {hint ? <Text variant="caption" tone="muted">{hint}</Text> : null}
       </Pressable>
@@ -296,11 +278,11 @@ export function Button({ label, onPress, variant = 'primary', icon, disabled, lo
         accessibilityRole="button" accessibilityLabel={label} accessibilityHint={accessibilityHint} accessibilityState={{ disabled: !!off, busy: !!loading }}
         onPress={off ? undefined : onPress} onPressIn={off ? undefined : press.onPressIn} onPressOut={off ? undefined : press.onPressOut}
         style={(s: { pressed: boolean; focused?: boolean; hovered?: boolean }) => [{
-          minHeight: compact ? 40 : 50, paddingHorizontal: compact ? t.spacing.md : t.spacing.xl, borderRadius: t.radius.pill, backgroundColor: look.bg, borderWidth: 1, borderColor: look.border,
+          minHeight: compact ? 44 : 58, paddingHorizontal: compact ? t.spacing.lg : t.spacing.xl, borderRadius: t.radius.pill, backgroundColor: look.bg, borderWidth: 1, borderColor: look.border,
           flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: t.spacing.sm, opacity: off ? 0.45 : s.pressed ? 0.9 : s.hovered ? 0.95 : 1,
-        }, variant === 'primary' ? { shadowColor: t.colors.ink, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.22, shadowRadius: 12, elevation: 5 } : variant === 'lime' ? softShadow(t, 0.5) : variant === 'secondary' ? softShadow(t, 0.25) : {}, focusRing(t, s.focused)]}
+        }, variant === 'primary' ? { shadowColor: t.colors.ink, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.28, shadowRadius: 18, elevation: 8 } : variant === 'lime' ? softShadow(t, 0.5) : variant === 'secondary' ? softShadow(t, 0.25) : {}, focusRing(t, s.focused)]}
       >
-        {loading ? <ActivityIndicator color={look.fg} /> : icon ? <Ionicons name={icon} size={18} color={look.fg} /> : null}
+        {loading ? <ActivityIndicator color={look.fg} /> : icon ? <Ionicons name={icon} size={20} color={look.fg} /> : null}
         <RNText maxFontSizeMultiplier={1.25} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[t.type.bodyStrong, { color: look.fg, flexShrink: 1, textAlign: 'center' }]}>{label}</RNText>
       </Pressable>
     </Animated.View>
@@ -314,7 +296,7 @@ export function IconButton({ icon, label, onPress, tone = 'default', size = 24, 
   const bg = tone === 'ink' ? t.colors.ink : solid ? t.colors.surface : 'transparent';
   const press = usePressScale(0.9);
   const small = useWindowDimensions().width < 360;
-  const dim = solid || tone === 'ink' ? (small ? 40 : 44) : t.minTouch;
+  const dim = solid || tone === 'ink' ? (small ? 46 : 52) : t.minTouch;
   return (
     <Animated.View style={press.style}>
       <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} onPressIn={press.onPressIn} onPressOut={press.onPressOut} hitSlop={4}
@@ -337,9 +319,9 @@ export function Chip({ label, selected, onPress, color, icon, count, lime }: { l
   return (
     <Animated.View style={press.style}>
       <Pressable accessibilityRole={onPress ? 'button' : 'text'} accessibilityState={{ selected: !!selected }} accessibilityLabel={count !== undefined ? `${label}, ${count}` : label} onPress={onPress} onPressIn={onPress ? press.onPressIn : undefined} onPressOut={onPress ? press.onPressOut : undefined}
-        style={(s: { pressed: boolean; focused?: boolean; hovered?: boolean }) => [{ maxWidth: '100%', minHeight: 40, paddingLeft: count !== undefined ? 6 : t.spacing.md + 2, paddingRight: t.spacing.lg, borderRadius: t.radius.pill, borderWidth: t.isDark && !selected ? 1 : 0, borderColor: t.colors.border, backgroundColor: selected ? selBg : t.colors.surface, flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, justifyContent: 'center', opacity: s.pressed ? 0.85 : 1 }, selected ? {} : softShadow(t, 0.25), focusRing(t, s.focused)]}>
+        style={(s: { pressed: boolean; focused?: boolean; hovered?: boolean }) => [{ maxWidth: '100%', minHeight: 46, paddingLeft: count !== undefined ? 8 : t.spacing.lg, paddingRight: t.spacing.lg, borderRadius: t.radius.pill, borderWidth: t.isDark && !selected ? 1 : 0, borderColor: t.colors.border, backgroundColor: selected ? selBg : t.colors.surface, flexDirection: 'row', alignItems: 'center', gap: t.spacing.sm, justifyContent: 'center', opacity: s.pressed ? 0.85 : 1 }, selected ? {} : softShadow(t, 0.25), focusRing(t, s.focused)]}>
         {count !== undefined ? (
-          <View style={{ minWidth: 28, height: 28, paddingHorizontal: 6, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: selected ? (lime ? t.colors.surface : t.colors.lime) : t.colors.surfaceSunken }}>
+          <View style={{ minWidth: 32, height: 32, paddingHorizontal: 6, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: selected ? (lime ? t.colors.surface : t.colors.lime) : t.colors.surfaceSunken }}>
             <RNText style={[t.type.label, { fontWeight: '800', color: selected ? t.colors.onLime : t.colors.text }]}>{count}</RNText>
           </View>
         ) : null}

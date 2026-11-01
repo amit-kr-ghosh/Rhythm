@@ -1,5 +1,4 @@
 import React from 'react';
-import { Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useApp } from '../../src/state/store';
 import { Screen, PageHeader } from '../../src/components/ui';
@@ -19,7 +18,7 @@ export default function SettingsHome() {
   const sync = useApp((s) => s.sync);
   const go = (p: string) => () => router.push(p as never);
   return (
-    <Screen contentStyle={Platform.OS === 'web' ? { maxWidth: 760 } : undefined}>
+    <Screen>
       <PageHeader light="Your" title="Settings" />
       <Group title="Account">
         <NavRow icon="person-circle-outline" title={authUser ? 'Account' : 'Sign in to sync'} value={authUser?.email ?? 'Optional — the app works fully offline'} onPress={go(authUser ? '/settings/logout' : '/auth/login')} />

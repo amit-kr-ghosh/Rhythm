@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AppState, Platform, Pressable, View, useWindowDimensions } from 'react-native';
+import { AppState, Pressable, View, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Banner, Button, Card, EmptyState, IconButton, ProgressRing, Row, Screen, SectionHeader, Text, PageHeader } from '../../src/components/ui';
 import { DurationStepper, Field, Segmented, Select } from '../../src/components/inputs';
@@ -23,9 +23,6 @@ const MODES: { value: SessionMode; label: string }[] = [
 
 /** 25:00 for sessions under an hour, 1:05:00 above — shorter than HH:MM:SS so it never overflows a phone. */
 const shortClock = (sec: number) => { const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), x = sec % 60; const p = (n: number) => String(n).padStart(2, '0'); return h > 0 ? `${h}:${p(m)}:${p(x)}` : `${p(m)}:${p(x)}`; };
-
-/** Web only: single-column pages stay a comfortable reading width on big monitors. */
-const WEB_NARROW = Platform.OS === 'web' ? { maxWidth: 820 } : undefined;
 
 export default function FocusScreen() {
   const timer = useApp((s) => s.timer);
@@ -80,12 +77,12 @@ function SetupTimer() {
   const bump = (d: number) => setFocusMin(Math.max(1, Math.min(240, focusMin + d)));
   const shownSec = mode === 'stopwatch' ? 0 : focusMin * 60;
   return (
-    <Screen contentStyle={WEB_NARROW}>
+    <Screen>
       <PageHeader light="Deep" title="Focus" lead="Make time count" action={<IconButton icon="create-outline" label="Log study time" solid onPress={() => router.push('/manual-session')} />} />
       <Segmented label="Timer mode" options={MODES} value={mode} onChange={setMode} />
 
       <Reveal index={1}>
-        <Card tone="hero" style={{ alignItems: 'center', gap: t.spacing.md, paddingVertical: t.spacing.xl }}>
+        <Card tone="hero" style={{ alignItems: 'center', gap: t.spacing.lg, paddingVertical: t.spacing.xxl }}>
           <Row gap={winW < 440 ? t.spacing.xs : t.spacing.xl} style={{ maxWidth: '100%' }}>
             {mode !== 'stopwatch' ? <IconButton icon="remove" label="Shorter by 5 minutes" solid onPress={() => bump(-5)} /> : null}
             <View accessible accessibilityLabel={mode === 'stopwatch' ? 'Stopwatch, counts up' : `${focusMin} minutes`} style={{ alignItems: 'center', minWidth: 0, flexShrink: 1 }}>
@@ -190,16 +187,16 @@ function RunningTimer() {
     if (ok) await cancelFocus();
   };
 
-  const ringSize = Math.max(180, Math.min(260, winW - 2 * (winW < 480 ? 16 : 24) - 2 * t.spacing.xl - 8));
+  const ringSize = Math.max(200, Math.min(300, winW - 2 * (winW < 480 ? 16 : 24) - 2 * t.spacing.xl - 8));
   const ringPct = timer.mode === 'stopwatch' ? ((run % 3_600_000) / 3_600_000) * 100
     : timer.mode === 'countdown' ? Math.min(100, (run / Math.max(1, timer.focusMs)) * 100)
     : phase.kind === 'break' ? (1 - (phase.remainingMs ?? 0) / Math.max(1, timer.breakMs)) * 100 : (1 - (phase.remainingMs ?? 0) / Math.max(1, timer.focusMs)) * 100;
   const ringColor = paused ? t.colors.warning : phase.kind === 'break' ? t.colors.success : t.colors.lime;
   return (
-    <Screen contentStyle={WEB_NARROW}>
+    <Screen>
       <PageHeader light="Deep" title="Focus" lead={subject?.name ?? 'No subject'} />
       <Reveal index={1}>
-        <Card tone="hero" style={{ alignItems: 'center', gap: t.spacing.md, paddingVertical: t.spacing.xl }}>
+        <Card tone="hero" style={{ alignItems: 'center', gap: t.spacing.lg, paddingVertical: t.spacing.xxl }}>
           <View accessible accessibilityLabel={spoken} accessibilityLiveRegion="none">
             <ProgressRing onHero value={ringPct} size={ringSize} stroke={14} color={ringColor} label={spoken} display={formatHMS(Math.max(0, Math.floor(shown / 1000)))} caption={phaseLabel} />
           </View>

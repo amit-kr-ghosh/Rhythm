@@ -1,6 +1,5 @@
 
 import { Platform } from 'react-native';
-import Constants, { ExecutionEnvironment } from 'expo-constants';
 import type * as NotificationsType from 'expo-notifications';
 import type { Channel, PlannedNotification } from '../domain/notify';
 
@@ -73,27 +72,14 @@ export const CHANNELS: Record<
   },
 };
 
-/**
- * Expo Go on Android cannot manage notification channels: its scoped channel manager throws a NullPointerException
- * ("getClass() on a null object") from setNotificationChannelAsync. Local notifications still work there and land in
- * the default channel, so in Expo Go we skip channels entirely. Development / production builds create them normally.
- */
-const inExpoGo = (): boolean => Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
-
 let channelsReady = false;
-let channelsUnavailable = false;
 let channelWarned = false;
 let channelsPromise: Promise<void> | null = null;
 
 export async function ensureChannels(): Promise<void> {
   const Notifications = N();
 
-  if (!Notifications || Platform.OS !== 'android' || channelsReady || channelsUnavailable) {
-    return;
-  }
-
-  if (inExpoGo()) {
-    channelsUnavailable = true;
+  if (!Notifications || Platform.OS !== 'android' || channelsReady) {
     return;
   }
 
@@ -130,14 +116,14 @@ export async function ensureChannels(): Promise<void> {
 
         await Notifications.setNotificationChannelAsync(id, options);
       } catch (error) {
-        // The native channel manager is broken in this environment: warn once, stop retrying the other channels, and
-        // fall back to the default channel when scheduling.
+        // One summary line instead of one per channel (Expo Go can't manage channels at all).
         if (!channelWarned) {
           channelWarned = true;
-          console.warn(`Could not create notification channel "${id}"; using the default channel instead:`, error);
+          console.warn(
+            `Could not create notification channel "${id}" (further channel errors are hidden):`,
+            error
+          );
         }
-        channelsUnavailable = true;
-        return;
       }
     }
 
@@ -280,7 +266,7 @@ export function applyPlan(
         const trigger: NotificationsType.DateTriggerInput = {
           type: Notifications.SchedulableTriggerInputTypes.DATE,
           date: new Date(notification.at),
-          ...(Platform.OS === 'android' && channelsReady
+          ...(Platform.OS === 'android'
             ? { channelId: notification.channel }
             : {}),
         };

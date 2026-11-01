@@ -72,7 +72,7 @@ export default function Analytics() {
       <Reveal index={1}>
         <Card tone="hero">
           <Row gap={narrow ? t.spacing.lg : t.spacing.xl}>
-            <ProgressRing onHero value={Math.min(100, r.total.pct)} size={narrow ? 88 : 104} label="Overall study progress" display={`${Math.round(r.total.pct)}%`} />
+            <ProgressRing onHero value={Math.min(100, r.total.pct)} size={narrow ? 100 : 116} label="Overall study progress" display={`${Math.round(r.total.pct)}%`} />
             <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
               <Text variant="caption" tone="heroMuted">Studied</Text>
               <Text variant="title" tone="hero">{formatCompact(r.total.actualSec)}</Text>
@@ -85,7 +85,7 @@ export default function Analytics() {
       <Reveal index={2}>
         <Card>
           <Row wrap align="flex-start" gap={t.spacing.lg} style={{ justifyContent: 'space-around' }}>
-            {r.subjects.map((s) => <SubjectRing key={s.subjectId} size={narrow ? 76 : 88} name={s.name} color={s.color} pct={s.pct} actualSec={s.actualSec} targetSec={s.targetSec} />)}
+            {r.subjects.map((s) => <SubjectRing key={s.subjectId} size={narrow ? 88 : 96} name={s.name} color={s.color} pct={s.pct} actualSec={s.actualSec} targetSec={s.targetSec} />)}
           </Row>
         </Card>
       </Reveal>
@@ -94,7 +94,7 @@ export default function Analytics() {
         <Card style={{ gap: t.spacing.md }}>
           <CardTitle icon="trending-up-outline" title="Daily consistency" />
           {empty ? <EmptyState icon="stats-chart-outline" title="No sessions in this range" body="Record study time with the timer or a manual entry and it will appear here." /> : (
-            <LineChart points={points} labels={labels} height={190} yMax={yMax} summary={`Daily share of the study target reached, ${title}: ${r.daily.map((x) => `${x.date} ${x.pct === null ? 'no data' : `${Math.round(x.pct)}%`}`).join(', ')}`} />
+            <LineChart points={points} labels={labels} height={220} yMax={yMax} summary={`Daily share of the study target reached, ${title}: ${r.daily.map((x) => `${x.date} ${x.pct === null ? 'no data' : `${Math.round(x.pct)}%`}`).join(', ')}`} />
           )}
         </Card>
       </Reveal>

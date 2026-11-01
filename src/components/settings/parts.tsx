@@ -37,8 +37,8 @@ export function NavRow({ icon, title, value, onPress, tone = 'default', last }: 
   const color = tone === 'danger' ? t.colors.danger : t.colors.accent;
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={value ? `${title}, ${value}` : title} onPress={onPress}
-      style={(s: { pressed: boolean; focused?: boolean; hovered?: boolean }) => [{ minHeight: 56, paddingHorizontal: t.spacing.md, flexDirection: 'row', alignItems: 'center', gap: t.spacing.md, backgroundColor: s.pressed || s.hovered ? t.colors.surfaceSunken : 'transparent', borderBottomWidth: last ? 0 : 1, borderBottomColor: t.colors.border }, focusRing(t, s.focused)]}>
-      <IconBadge icon={icon} color={color} size={34} />
+      style={(s: { pressed: boolean; focused?: boolean; hovered?: boolean }) => [{ minHeight: 64, paddingHorizontal: t.spacing.lg, flexDirection: 'row', alignItems: 'center', gap: t.spacing.md, backgroundColor: s.pressed || s.hovered ? t.colors.surfaceSunken : 'transparent', borderBottomWidth: last ? 0 : 1, borderBottomColor: t.colors.border }, focusRing(t, s.focused)]}>
+      <IconBadge icon={icon} color={color} size={38} />
       <View style={{ flex: 1 }}>
         <Text variant="bodyStrong" tone={tone === 'danger' ? 'danger' : 'default'}>{title}</Text>
         {value ? <Text variant="caption" tone="muted" numberOfLines={1}>{value}</Text> : null}

@@ -11,15 +11,9 @@ import { store, useApp } from '../src/state/store';
 import { Button, LoadingView, Screen, Text } from '../src/components/ui';
 import { ToastHost, choose } from '../src/components/feedback';
 import { DialogHost } from '../src/components/dialog';
-import { WebModalFrame } from '../src/components/WebModalFrame';
 import { formatDuration } from '../src/domain/time';
 
 void SplashScreen.preventAutoHideAsync();
-
-/** Phones keep the native modal. In a browser the modal is a transparent route that WebModalFrame turns into a centred dialog. */
-const MODAL = (Platform.OS === 'web'
-  ? { presentation: 'transparentModal', animation: 'fade', contentStyle: { backgroundColor: 'transparent' } }
-  : { presentation: 'modal' }) as { presentation: 'modal' };
 
 function Gate() {
   const t = useTheme();
@@ -62,15 +56,15 @@ function Gate() {
     <View style={{ flex:  1 }}>
       {/* Keep the root navigator mounted from the first render. Expo Router needs it
           to initialize Linking even while local storage and Supabase are booting. */}
-      <Stack screenLayout={({ children, options }) => <WebModalFrame isModal={options.presentation === 'transparentModal'}>{children}</WebModalFrame>} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: t.colors.bg }, animation: t.reduceMotion ? 'none' : 'default', freezeOnBlur: Platform.OS !== 'web' }}>
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: t.colors.bg }, animation: t.reduceMotion ? 'none' : 'default', freezeOnBlur: Platform.OS !== 'web' }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
-        <Stack.Screen name="activity/[id]" options={MODAL} />
-        <Stack.Screen name="manual-session" options={MODAL} />
-        <Stack.Screen name="occurrence" options={MODAL} />
-        <Stack.Screen name="task/[id]" options={MODAL} />
-        <Stack.Screen name="goal/[id]" options={MODAL} />
-        <Stack.Screen name="habit/[id]" options={MODAL} />
+        <Stack.Screen name="activity/[id]" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="manual-session" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="occurrence" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="task/[id]" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="goal/[id]" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="habit/[id]" options={{ presentation: 'modal' }} />
       </Stack>
       {bootError ? (
         <View style={[StyleSheet.absoluteFill, { zIndex: 1000, elevation: 1000, backgroundColor: t.colors.bg }]}>

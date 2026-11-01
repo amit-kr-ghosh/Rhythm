@@ -17,18 +17,6 @@ const slide = ({ current }: Progress) => {
   return { sceneStyle: { transform: [{ translateX: current.progress.interpolate({ inputRange: [-1, 0, 1], outputRange: [-w, 0, w], extrapolate: 'clamp' }) }] } };
 };
 
-/**
- * Web: the incoming tab eases in (a short fade and rise). Inactive tabs are display:none, so the browser replays this
- * CSS animation every time a tab becomes visible; only the new page animates, so there is no overlap or ghosting.
- */
-const webScene = {
-  backgroundColor: 'transparent',
-  animationKeyframes: [{ from: { opacity: 0, transform: [{ translateY: 10 }] }, to: { opacity: 1, transform: [{ translateY: 0 }] } }],
-  animationDuration: '280ms',
-  animationTimingFunction: 'cubic-bezier(0.22, 0.8, 0.26, 1)',
-  animationFillMode: 'both',
-} as never;
-
 /** Five tabs, ordered by how often they are used: Today → Timetable → Focus → Analytics → Settings. */
 export default function TabsLayout() {
   const t = useTheme();
@@ -53,7 +41,7 @@ export default function TabsLayout() {
         // Phones: mount all five tabs up front (behind the "Starting Rhythm" overlay) so the first visit to a tab is instant
         // instead of building the screen while you wait. Web keeps lazy mounting (its tabs are cheap and its load time matters).
         lazy: Platform.OS === 'web',
-        sceneStyle: Platform.OS === 'web' ? webScene : { backgroundColor: 'transparent' },
+        sceneStyle: { backgroundColor: 'transparent' },
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Today' }} />

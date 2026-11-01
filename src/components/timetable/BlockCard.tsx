@@ -22,7 +22,7 @@ export function BlockCard({ seg, color, state, selected, subjectName, studiedMin
   const t = useTheme();
   const shown = seg.segEnd - seg.segStart;
   // Compact: longer blocks get only a little more room (a 7 h sleep block used to take ~180 px of the screen).
-  const height = Math.max(56, Math.min(80, Math.round(50 + shown * 0.06)));
+  const height = Math.max(64, Math.min(92, Math.round(56 + shown * 0.08)));
   const continues = !seg.spill && seg.startMin + seg.durationMin > 1440;
   const range = seg.spill
     ? `from yesterday · until ${formatClock(seg.segEnd % 1440)}`
@@ -38,7 +38,7 @@ export function BlockCard({ seg, color, state, selected, subjectName, studiedMin
   return (
     <View style={{ minHeight: height, borderRadius: t.radius.lg, backgroundColor: t.colors.surface, borderWidth: selected ? 2 : t.isDark ? 1 : 0, borderColor: selected ? t.colors.focusRing : t.colors.border, shadowColor: t.colors.shadow, shadowOffset: { width: 0, height: 8 }, shadowOpacity: t.isDark ? 0.3 : 0.08, shadowRadius: 22, elevation: 3 }}>
       <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityHint="Opens details for this block" onPress={onPress}
-        style={(s: { pressed: boolean; focused?: boolean }) => [{ paddingVertical: t.spacing.sm + 2, paddingLeft: t.spacing.md, paddingRight: t.spacing.huge, gap: 2, justifyContent: 'center', borderRadius: t.radius.lg }, focusRing(t, s.focused)]}>
+        style={(s: { pressed: boolean; focused?: boolean }) => [{ paddingVertical: t.spacing.md, paddingLeft: t.spacing.lg, paddingRight: t.spacing.huge + t.spacing.xs, gap: 2, justifyContent: 'center', borderRadius: t.radius.lg }, focusRing(t, s.focused)]}>
         <Row gap={t.spacing.sm}>
           <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }} />
           <Text variant="bodyStrong" numberOfLines={2} style={{ flex: 1 }}>{seg.title}</Text>

@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Platform, Pressable, View, useWindowDimensions } from 'react-native';
+import { Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Button, Card, Chip, IconButton, Row, Screen, Text, PageHeader } from '../../src/components/ui';
-import { formatDuration } from '../../src/domain/time';
+import { Button, Chip, IconButton, Row, Screen, Text, PageHeader } from '../../src/components/ui';
 import { WeekStrip } from '../../src/components/timetable/WeekStrip';
 import { Sheet, confirm } from '../../src/components/feedback';
 import { DayView } from '../../src/components/timetable/DayView';
@@ -60,11 +59,6 @@ export default function TimetableScreen() {
   };
 
   const [filter, setFilter] = useState<'all' | 'study' | 'routine'>('all');
-  // Web desktop only: the day list on the left, a month calendar and a day summary on the right.
-  const winW = useWindowDimensions().width;
-  const split = Platform.OS === 'web' && winW >= 1280 && view === 'day';
-  const studyMin = model.segments.filter((x) => x.category === 'study' && !x.spill).reduce((a, x) => a + x.durationMin, 0);
-  const dayView = <DayView filter={filter} model={model} selectedKey={actionSeg?.key ?? null} onOpen={openDetails} onMore={setActionSeg} onAdd={add} />;
   return (
     <Screen>
       <Row between>
@@ -95,23 +89,7 @@ export default function TimetableScreen() {
           <Chip label="Routine" icon="person-outline" selected={filter === 'routine'} onPress={() => setFilter('routine')} />
         </Row>
       ) : null}
-      {view === 'day' && split ? (
-        <Row align="flex-start" gap={t.spacing.xl}>
-          <View style={{ flex: 1.6, minWidth: 0 }}>{dayView}</View>
-          <View style={{ flex: 1, minWidth: 0, gap: t.spacing.lg }}>
-            <CalendarView date={date} today={today} onPickDay={pickDay} onMonth={shiftMonth} />
-            <Card>
-              <Text variant="heading">{date === today ? 'Today at a glance' : 'Day at a glance'}</Text>
-              <Row between style={{ marginTop: t.spacing.md }}>
-                <View><Text variant="title">{model.segments.filter((x) => !x.spill).length}</Text><Text variant="caption" tone="muted">Activities</Text></View>
-                <View><Text variant="title">{formatDuration(studyMin)}</Text><Text variant="caption" tone="muted">Study planned</Text></View>
-                <View><Text variant="title">{model.segments.filter((x) => x.category === 'study' && !x.spill).length}</Text><Text variant="caption" tone="muted">Study blocks</Text></View>
-              </Row>
-            </Card>
-          </View>
-        </Row>
-      ) : null}
-      {view === 'day' && !split ? dayView : null}
+      {view === 'day' ? <DayView filter={filter} model={model} selectedKey={actionSeg?.key ?? null} onOpen={openDetails} onMore={setActionSeg} onAdd={add} /> : null}
       {view === 'week' ? <WeekView date={date} today={today} onPickDay={pickDay} /> : null}
       {view === 'month' ? <CalendarView date={date} today={today} onPickDay={pickDay} onMonth={shiftMonth} /> : null}
 

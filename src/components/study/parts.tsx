@@ -10,41 +10,45 @@ import { formatCompact, formatExact, type SubjectDay } from '../../domain/study'
 const clock = (iso: string) => formatClock(minutesOfDay(new Date(iso)));
 
 /**
- * One tracked subject as a compact card that sits two-per-row on phones: dot + name on top, big % with a round play
- * button, a thin progress bar, then one short "actual / target · left" line. Every text shrinks to fit (never clipped
- * with "…"). Tap the card body for sessions; tap the play button to start focus (two sibling buttons, never nested).
+ * One tracked subject as a white task-style card (like the reference): status pill + arrow button on top, bold name,
+ * a thin progress bar, then "actual / target" with a round black play button. Tap the card for sessions.
  */
 export function SubjectCard({ row, onOpen, onStart }: { row: SubjectDay; onOpen: () => void; onStart: () => void }) {
   const t = useTheme();
   const pct = Math.round(row.pct);
   const label = `${row.name}: ${formatCompact(row.actualSec)} of ${formatCompact(row.targetSec)}, ${pct}%. Open sessions`;
-  const left = row.remainingSec > 0 ? `${formatCompact(row.remainingSec)} left` : 'Target reached';
   const ring = (s: { pressed: boolean; focused?: boolean }) => [{ borderRadius: t.radius.lg, opacity: s.pressed ? 0.85 : 1 }, focusRing(t, s.focused)];
+  // Two sibling buttons (open details / start timer) — never a button inside a button (invalid HTML on web).
   return (
-    <Card style={{ gap: t.spacing.sm, padding: t.spacing.md, borderRadius: t.radius.lg }}>
-      <Row between gap={t.spacing.sm}>
-        <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onOpen} style={(s: { pressed: boolean; focused?: boolean }) => [{ flex: 1, minWidth: 0, gap: 2 }, ...ring(s)]}>
-          <Row gap={6} style={{ minWidth: 0 }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: row.color }} />
-            <Text variant="label" fit numberOfLines={1} style={{ flex: 1, fontSize: 14, lineHeight: 18 }}>{row.name}</Text>
-          </Row>
-          <Text variant="title" fit numberOfLines={1} style={{ color: row.color, fontSize: 24, lineHeight: 30 }}>{pct}%</Text>
-        </Pressable>
-        <IconButton icon="play" label={`Start focus for ${row.name}`} tone="ink" size={16} onPress={onStart} />
-      </Row>
-      <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onOpen} style={(s: { pressed: boolean; focused?: boolean }) => [{ gap: 6 }, ...ring(s)]}>
-        <ProgressBar value={Math.min(100, row.pct)} color={row.color} height={6} label={`${row.name} progress`} />
-        <Text variant="caption" tone="muted" fit numberOfLines={1} style={{ fontSize: 12, lineHeight: 16 }}>{formatCompact(row.actualSec)} / {formatCompact(row.targetSec)} · {left}</Text>
+    <Card style={{ gap: t.spacing.md, padding: t.spacing.xl }}>
+      <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onOpen} style={(s: { pressed: boolean; focused?: boolean }) => [{ gap: t.spacing.md }, ...ring(s)]}>
+        <Row between>
+          <Row gap={t.spacing.sm} style={{ flex: 1, minWidth: 0 }}><View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: row.color }} /><Text variant="title" fit numberOfLines={1} style={{ flex: 1 }}>{row.name}</Text></Row>
+          <Text variant="title" style={{ color: row.color }}>{pct}%</Text>
+        </Row>
+        <ProgressBar value={Math.min(100, row.pct)} color={row.color} height={8} label={`${row.name} progress`} />
       </Pressable>
+      <Row between>
+        <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onOpen} style={(s: { pressed: boolean; focused?: boolean }) => [{ flex: 1 }, ...ring(s)]}>
+          <Row gap={t.spacing.sm}>
+            <Ionicons name="time-outline" size={20} color={t.colors.textMuted} />
+            <View>
+              <Text variant="bodyStrong">{formatCompact(row.actualSec)} <Text variant="body" tone="muted">/ {formatCompact(row.targetSec)}</Text></Text>
+              <Text variant="caption" tone="muted">{row.remainingSec > 0 ? `${formatCompact(row.remainingSec)} left` : 'Target reached'}</Text>
+            </View>
+          </Row>
+        </Pressable>
+        <IconButton icon="play" label={`Start focus for ${row.name}`} tone="ink" size={20} onPress={onStart} />
+      </Row>
     </Card>
   );
 }
 
 /** Subject ring used on Analytics: ring + name + "actual / target". */
-export function SubjectRing({ name, color, pct, actualSec, targetSec, size = 84 }: { name: string; color: string; pct: number; actualSec: number; targetSec: number; size?: number }) {
+export function SubjectRing({ name, color, pct, actualSec, targetSec, size = 96 }: { name: string; color: string; pct: number; actualSec: number; targetSec: number; size?: number }) {
   return (
-    <View accessible accessibilityLabel={`${name}: ${formatCompact(actualSec)} of ${formatCompact(targetSec)}, ${Math.round(pct)}%`} style={{ alignItems: 'center', gap: 8, flex: 1, minWidth: 88 }}>
-      <ProgressRing value={Math.min(100, pct)} size={size} stroke={9} color={color} label={`${name} progress`} display={`${Math.round(pct)}%`} />
+    <View accessible accessibilityLabel={`${name}: ${formatCompact(actualSec)} of ${formatCompact(targetSec)}, ${Math.round(pct)}%`} style={{ alignItems: 'center', gap: 8, flex: 1, minWidth: 100 }}>
+      <ProgressRing value={Math.min(100, pct)} size={size} stroke={10} color={color} label={`${name} progress`} display={`${Math.round(pct)}%`} />
       <View style={{ alignItems: 'center' }}>
         <Row gap={6}><View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} /><Text variant="bodyStrong" fit numberOfLines={1}>{name}</Text></Row>
         <Text variant="caption" fit numberOfLines={1} tone="muted">{formatCompact(actualSec)} / {formatCompact(targetSec)}</Text>
