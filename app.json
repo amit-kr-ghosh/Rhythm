@@ -1,0 +1,68 @@
+{
+  "expo": {
+    "name": "Rhythm",
+    "slug": "rhythm-planner",
+    "scheme": "rhythm",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "android": {
+      "package": "com.rhythm.planner",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1F1D26"
+      },
+      "permissions": [
+        "POST_NOTIFICATIONS",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "backgroundColor": "#F6EAEA",
+          "imageWidth": 200,
+          "dark": {
+            "image": "./assets/splash.png",
+            "backgroundColor": "#16111F"
+          }
+        }
+      ],
+      "expo-sqlite",
+      "expo-secure-store",
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "color": "#6A4BE0",
+          "defaultChannel": "activities",
+          "icon": "./assets/notification-icon.png"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "ios": {
+      "bundleIdentifier": "com.rhythm.planner",
+      "supportsTablet": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png",
+      "name": "Rhythm \u2014 timetable & focus tracker",
+      "shortName": "Rhythm",
+      "description": "Personal timetable, focus timer and study tracker.",
+      "lang": "en",
+      "themeColor": "#1F1D26",
+      "backgroundColor": "#F6EAEA",
+      "display": "standalone"
+    }
+  }
+}

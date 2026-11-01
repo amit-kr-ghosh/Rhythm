@@ -1,0 +1,73 @@
+{
+  "name": "rhythm-planner",
+  "version": "1.0.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "typecheck": "tsc --noEmit",
+    "lint": "node scripts/check-colors.mjs",
+    "test": "cross-env TZ=Asia/Kolkata tsx --test tests/*.test.ts && cross-env RHYTHM_BACKEND=web TZ=Asia/Kolkata tsx --test tests/sync-engine.test.ts tests/backend-parity.test.ts",
+    "test:tz": "cross-env TZ=America/New_York tsx --test tests/*.test.ts && cross-env TZ=Pacific/Auckland tsx --test tests/*.test.ts",
+    "test:all": "npm run test && npm run test:tz",
+    "test:db": "bash supabase/tests/run-local.sh",
+    "build:apk": "eas build --platform android --profile preview",
+    "build:aab": "eas build --platform android --profile production",
+    "seed:sql": "tsx scripts/gen-seed-sql.ts > supabase/seed.generated.sql",
+    "typecheck:core": "tsc -p tsconfig.core.json",
+    "doctor": "expo-doctor",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "export:web": "expo export --platform web",
+    "test:browser": "node tests/browser/idb.browser.mjs",
+    "dev:android-native": "expo run:android",
+    "fix-deps": "expo install --fix",
+    "export:android": "expo export --platform android",
+    "lint:eslint": "expo lint",
+    "clean:install": "node scripts/clean-install.mjs"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "*",
+    "@expo/vector-icons": "*",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/netinfo": "*",
+    "@supabase/supabase-js": "^2.58.0",
+    "expo": "^58.0.0",
+    "expo-constants": "^58.0.0",
+    "expo-file-system": "^58.0.0",
+    "expo-font": "^58.0.0",
+    "expo-linking": "^58.0.0",
+    "expo-notifications": "~58.1.7",
+    "expo-router": "^58.0.0",
+    "expo-secure-store": "^58.0.0",
+    "expo-sharing": "^58.0.0",
+    "expo-splash-screen": "^58.0.0",
+    "expo-sqlite": "^58.0.0",
+    "expo-status-bar": "^58.0.0",
+    "expo-system-ui": "^58.0.0",
+    "expo-web-browser": "^58.0.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-native": "^0.88.0-rc.0",
+    "react-native-safe-area-context": "~5.10.1",
+    "react-native-screens": "*",
+    "react-native-svg": "*",
+    "react-native-url-polyfill": "^2.0.0",
+    "react-native-web": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "~19.3.0",
+    "typescript": "~6.0.3",
+    "tsx": "^4.19.0",
+    "cross-env": "^10.1.0"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "overrides": {
+    "react": "$react",
+    "react-dom": "$react-dom"
+  }
+}
