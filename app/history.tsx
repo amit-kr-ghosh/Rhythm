@@ -7,7 +7,7 @@ import { Select } from '../src/components/inputs';
 import { useApp } from '../src/state/store';
 import { useToday } from '../src/state/hooks';
 import { isValidSession } from '../src/domain/progress';
-import { formatCompact, formatExact, trackedSubjects } from '../src/domain/study';
+import { formatCompact, formatExact, selectableSubjects } from '../src/domain/study';
 import { formatClock, minutesOfDay, parseDateKey, WEEKDAY_SHORT, weekdayOf } from '../src/domain/time';
 import { safeBack } from '../src/navigation/safeBack';
 import { Pressable } from 'react-native';
@@ -22,7 +22,7 @@ export default function History() {
   const today = useToday();
   const d = useApp((s) => s.data);
   const [subject, setSubject] = useState<string | null>(null);
-  const tracked = useMemo(() => trackedSubjects(d.subjects), [d.subjects]);
+  const tracked = useMemo(() => selectableSubjects(d.subjects), [d.subjects]);
   const byId = useMemo(() => new Map(d.subjects.map((s) => [s.id, s])), [d.subjects]);
   const groups = useMemo(() => {
     const live = d.sessions.filter((s) => isValidSession(s) && (subject === null || s.subjectId === subject)).sort((a, b) => b.startedAt.localeCompare(a.startedAt));

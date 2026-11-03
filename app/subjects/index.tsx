@@ -6,7 +6,7 @@ import { useApp } from '../../src/state/store';
 import { Button, Card, EmptyState, IconButton, ProgressBar, Row, Screen, SectionHeader, Text } from '../../src/components/ui';
 import { ColorPicker, Field, NumberField } from '../../src/components/inputs';
 import { Sheet, confirm } from '../../src/components/feedback';
-import { archiveSubject, saveSubject } from '../../src/state/actions';
+import { archiveSubject, deleteSubject, saveSubject, subjectUsage } from '../../src/state/actions';
 import { minLabel, useSubjectStats } from '../../src/state/extra-focus';
 import type { Subject } from '../../src/domain/types';
 import { PICKER_COLORS } from '../../src/domain/colors';
@@ -43,9 +43,10 @@ export default function SubjectsScreen() {
   const [weekly, setWeekly] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const open = (s: Subject | 'new') => {
-    setEditing(s); setErrors({});
+    setEditing(s); setErrors({}); setDeleteError(null);
     const cur = s === 'new' ? null : s;
     setName(cur?.name ?? ''); setColor(cur?.color ?? (PICKER_COLORS[subjects.length % PICKER_COLORS.length] as string));
     setDaily(cur?.dailyTargetMin ?? null); setWeekly(cur?.weeklyTargetMin ?? null); setNotes(cur?.notes ?? '');
@@ -61,6 +62,18 @@ export default function SubjectsScreen() {
     }
     await archiveSubject(s.id, !s.archived); setEditing(null);
   };
+  const remove = async (s: Subject) => {
+    const u = subjectUsage(s.id);
+    const lines: string[] = [];
+    if (u.sessions) lines.push(`${u.sessions} recorded session${u.sessions === 1 ? ' is' : 's are'} kept in your history as “Unassigned”.`);
+    const unlinked = [u.tasks && `${u.tasks} task${u.tasks === 1 ? '' : 's'}`, u.goals && `${u.goals} goal${u.goals === 1 ? '' : 's'}`, u.activities && `${u.activities} timetable block${u.activities === 1 ? '' : 's'}`].filter(Boolean);
+    if (unlinked.length) lines.push(`${unlinked.join(', ')} will be unlinked from it.`);
+    lines.push('This deletes the subject on all your devices. To just hide it, archive it instead.');
+    const ok = await confirm({ title: `Delete ${s.name}?`, message: lines.join('\n\n'), confirmLabel: 'Delete', destructive: true });
+    if (!ok) return;
+    const res = await deleteSubject(s.id);
+    if (res.ok) { setEditing(null); setDeleteError(null); } else setDeleteError(Object.values(res.errors)[0] ?? 'Could not delete the subject.');
+  };
   const active = subjects.filter((s) => !s.archived).sort((a, b) => a.sortOrder - b.sortOrder);
   const archived = subjects.filter((s) => s.archived);
 
@@ -73,7 +86,7 @@ export default function SubjectsScreen() {
       <Button label="Add subject" icon="add" onPress={() => open('new')} />
       {active.length === 0 ? <EmptyState icon="book-outline" title="No subjects" body="Add a subject to track focused time and targets for it." /> : active.map((s) => <SubjectCard key={s.id} subject={s} onEdit={() => open(s)} />)}
       {archived.length ? <SectionHeader title="Archived" /> : null}
-      {archived.map((s) => <Card key={s.id}><Row between><Text tone="muted">{s.name}</Text><Button label="Restore" compact fullWidth={false} variant="ghost" onPress={() => void toggleArchive(s)} /></Row></Card>)}
+      {archived.map((s) => <Card key={s.id}><Row between><Text tone="muted">{s.name}</Text><Row gap={t.spacing.xs}><Button label="Restore" compact fullWidth={false} variant="ghost" onPress={() => void toggleArchive(s)} /><IconButton icon="trash-outline" tone="danger" label={`Delete ${s.name}`} onPress={() => void remove(s)} /></Row></Row></Card>)}
 
       <Sheet visible={editing !== null} title={editing === 'new' ? 'New subject' : 'Edit subject'} onClose={() => setEditing(null)}
         footer={<Button label="Save" onPress={() => void save()} />}>
@@ -85,6 +98,8 @@ export default function SubjectsScreen() {
         <Text variant="caption" tone="muted">Changing a target only affects today onward; past days keep the target that applied then.</Text>
         <Field label="Notes" value={notes} onChangeText={setNotes} multiline />
         {editing && editing !== 'new' ? <Button label={editing.archived ? 'Restore subject' : 'Archive subject'} variant="secondary" onPress={() => void toggleArchive(editing)} /> : null}
+        {editing && editing !== 'new' ? <Button label="Delete subject" icon="trash-outline" variant="danger" onPress={() => void remove(editing)} /> : null}
+        {deleteError ? <Text variant="caption" tone="danger">{deleteError}</Text> : null}
       </Sheet>
     </Screen>
   );

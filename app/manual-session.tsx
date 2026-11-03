@@ -3,7 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Banner, Button, Card, IconButton, Row, Screen, Text } from '../src/components/ui';
 import { DurationStepper, Field, Select, TimeField } from '../src/components/inputs';
 import { useTheme } from '../src/theme/ThemeProvider';
-import { trackedSubjects } from '../src/domain/study';
+import { selectableSubjects } from '../src/domain/study';
 import { useApp } from '../src/state/store';
 import { useToday } from '../src/state/hooks';
 import { addManualSession } from '../src/state/actions';
@@ -19,7 +19,7 @@ export default function ManualSessionModal() {
   const today = useToday();
   const params = useLocalSearchParams() as { subjectId?: string };
   const allSubjects = useApp((s) => s.data.subjects);
-  const subjects = useMemo(() => trackedSubjects(allSubjects), [allSubjects]);
+  const subjects = useMemo(() => selectableSubjects(allSubjects), [allSubjects]);
   const [date, setDate] = useState(today);
   const [startMin, setStartMin] = useState(9 * 60);
   const [duration, setDuration] = useState(60);

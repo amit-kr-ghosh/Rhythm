@@ -70,6 +70,46 @@ export function orderForPush(ops: OutboxOp[]): OutboxOp[] {
   return [...ops].sort((a, b) => (a.op === b.op ? rank(a.kind) - rank(b.kind) : a.op === 'delete' ? 1 : -1) || a.createdAt - b.createdAt);
 }
 
+/* ---------------- Foreign-key dependencies ---------------- */
+
+export type ParentRef = {
+  /** Field on the child entity (camelCase). */
+  field: string;
+  /** Kind of the parent row it points at. */
+  kind: EntityKind;
+  /** True when the cloud column is nullable (the server uses `on delete set null`), so a dangling id may be cleared. */
+  nullable: boolean;
+  /** Referenced id. */
+  id: string;
+};
+
+/**
+ * Cloud foreign keys (see supabase/migrations/0001_schema.sql). Every child row must reach the server AFTER the rows
+ * it points at, otherwise Postgres rejects it with 23503 "violates foreign key constraint".
+ */
+const FK_FIELDS: Partial<Record<EntityKind, { field: string; kind: EntityKind; nullable: boolean }[]>> = {
+  templates: [{ field: 'planId', kind: 'plans', nullable: true }, { field: 'subjectId', kind: 'subjects', nullable: true }],
+  exceptions: [{ field: 'templateId', kind: 'templates', nullable: false }, { field: 'subjectId', kind: 'subjects', nullable: true }],
+  goals: [{ field: 'subjectId', kind: 'subjects', nullable: true }],
+  tasks: [{ field: 'subjectId', kind: 'subjects', nullable: true }, { field: 'goalId', kind: 'goals', nullable: true }],
+  sessions: [{ field: 'subjectId', kind: 'subjects', nullable: true }, { field: 'taskId', kind: 'tasks', nullable: true }],
+  habitRecords: [{ field: 'habitId', kind: 'habits', nullable: false }],
+};
+
+/** The parent rows an entity points at (only set, non-empty references). */
+export function parentRefs(kind: EntityKind, entity: Record<string, unknown> | null | undefined): ParentRef[] {
+  const out: ParentRef[] = [];
+  for (const f of FK_FIELDS[kind] ?? []) {
+    const v = entity?.[f.field];
+    if (typeof v === 'string' && v) out.push({ ...f, id: v });
+  }
+  return out;
+}
+
+/** Postgres foreign_key_violation. */
+export const isForeignKeyError = (err: { code?: string; message?: string } | null | undefined): boolean =>
+  err?.code === '23503' || /violates foreign key constraint/i.test(err?.message ?? '');
+
 /* ---------------- Conflict resolution ---------------- */
 
 export type Versioned = { id: string; updatedAt: string; deletedAt: string | null };

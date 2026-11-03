@@ -2,6 +2,16 @@ import type { CloudClient, CloudError } from '../../src/data/syncEngine';
 
 type Row = Record<string, unknown>;
 
+/** Composite (user_id, <col>) foreign keys from supabase/migrations/0001_schema.sql: child table → [column, parent table]. */
+const FKS: Record<string, [string, string][]> = {
+  activity_templates: [['plan_id', 'timetable_templates'], ['subject_id', 'subjects']],
+  schedule_exceptions: [['template_id', 'activity_templates'], ['subject_id', 'subjects']],
+  goals: [['subject_id', 'subjects']],
+  tasks: [['subject_id', 'subjects'], ['goal_id', 'goals']],
+  study_sessions: [['subject_id', 'subjects'], ['task_id', 'tasks']],
+  habit_records: [['habit_id', 'habits']],
+};
+
 /** In-memory stand-in for Supabase that reproduces the server rules the migrations enforce:
  *  composite (user_id,id) keys, stale-write guard on updated_at, server-assigned server_updated_at. */
 export class FakeCloud {
@@ -11,6 +21,8 @@ export class FakeCloud {
   signedIn: string | null = 'user-1';
   rejectIds = new Set<string>();
   server5xx = false;
+  /** Reject rows whose parent row is missing, exactly like Postgres (23503). Off by default so older tests are unaffected. */
+  enforceForeignKeys = false;
   expireTokenOnce = false;
   upsertCalls = 0;
   onUpsert: ((table: string, rows: Row[]) => void) | null = null;
@@ -37,6 +49,16 @@ export class FakeCloud {
     this.tables.set(table, t);
     for (const r of rows) {
       if (this.rejectIds.has(String(r.id))) this.fail({ status: 400, code: '23514', message: 'check constraint violated' });
+    }
+    if (this.enforceForeignKeys) {
+      for (const r of rows) {
+        for (const [col, parent] of FKS[table] ?? []) {
+          const ref = r[col];
+          if (ref !== null && ref !== undefined && !this.tables.get(parent)?.has(`${r.user_id}/${ref}`)) {
+            this.fail({ status: 409, code: '23503', message: `insert or update on table "${table}" violates foreign key constraint "${table}_${col}_fk"` });
+          }
+        }
+      }
     }
     for (const r of rows) {
       const key = onConflict === 'user_id' ? String(r.user_id) : `${r.user_id}/${r.id}`;

@@ -115,7 +115,7 @@ export async function saveSubject(i: SubjectInput): Promise<Result<Subject>> {
   const t = nowIso();
   const subject: Subject = existing
     ? { ...existing, name: i.name.trim(), color: i.color, dailyTargetMin: i.dailyTargetMin, weeklyTargetMin: i.weeklyTargetMin, notes: i.notes ?? existing.notes, updatedAt: t }
-    : { ...stamp(), name: i.name.trim(), color: i.color, archived: false, sortOrder: D().subjects.length, dailyTargetMin: i.dailyTargetMin, weeklyTargetMin: i.weeklyTargetMin, notes: i.notes ?? '', isDefault: false };
+    : { ...stamp(), name: i.name.trim(), color: i.color, archived: false, sortOrder: D().subjects.reduce((m, s) => Math.max(m, s.sortOrder), -1) + 1, dailyTargetMin: i.dailyTargetMin, weeklyTargetMin: i.weeklyTargetMin, notes: i.notes ?? '', isDefault: false };
   await save('subjects', subject);
   await recordTargetHistory();
   return { ok: true, value: subject };
@@ -124,6 +124,40 @@ export async function saveSubject(i: SubjectInput): Promise<Result<Subject>> {
 export async function archiveSubject(id: string, archived: boolean): Promise<void> {
   const s = D().subjects.find((x) => x.id === id);
   if (s) await save('subjects', { ...s, archived, updatedAt: nowIso() });
+}
+
+/** What deleting a subject will touch, for the confirmation message. */
+export function subjectUsage(id: string): { sessions: number; tasks: number; goals: number; activities: number } {
+  const d = D();
+  return {
+    sessions: d.sessions.filter((x) => x.subjectId === id).length,
+    tasks: d.tasks.filter((x) => x.subjectId === id).length,
+    goals: d.goals.filter((x) => x.subjectId === id).length,
+    activities: d.templates.filter((x) => x.subjectId === id).length + d.exceptions.filter((x) => x.subjectId === id).length,
+  };
+}
+
+/**
+ * Delete a subject. It is a tombstone (so the deletion syncs to every device). Recorded sessions are never deleted: they
+ * stay in history and totals as "Unassigned". Tasks, goals and timetable blocks that pointed at it are unlinked first,
+ * so nothing keeps referencing a subject that no longer exists.
+ */
+export async function deleteSubject(id: string): Promise<Result> {
+  const subject = D().subjects.find((x) => x.id === id);
+  if (!subject) return { ok: false, errors: { general: 'Subject not found.' } };
+  if (store.get().timer?.subjectId === id) return { ok: false, errors: { general: 'A timer is running for this subject. Finish or cancel it first.' } };
+  const t = nowIso();
+  const d = D();
+  const unlink = <T extends { subjectId: string | null; updatedAt: string }>(list: T[]): T[] =>
+    list.filter((x) => x.subjectId === id).map((x) => ({ ...x, subjectId: null, updatedAt: t }));
+  const templates = unlink(d.templates), exceptions = unlink(d.exceptions), tasks = unlink(d.tasks), goals = unlink(d.goals);
+  if (templates.length) await save('templates', templates, { replan: false });
+  if (exceptions.length) await save('exceptions', exceptions, { replan: false });
+  if (tasks.length) await save('tasks', tasks, { replan: false });
+  if (goals.length) await save('goals', goals, { replan: false });
+  await remove('subjects', id);
+  await recordTargetHistory();
+  return { ok: true };
 }
 
 async function recordTargetHistory(): Promise<void> {

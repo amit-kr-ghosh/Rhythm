@@ -23,6 +23,11 @@ export function trackedSubjects(subjects: Subject[]): Subject[] {
   return subjects.filter((s) => !s.deletedAt && !s.archived && (s.dailyTargetMin ?? 0) > 0).sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
+/** Subjects the user can record time against: every live, non-archived subject (with or without a daily target). */
+export function selectableSubjects(subjects: Subject[]): Subject[] {
+  return subjects.filter((s) => !s.deletedAt && !s.archived).sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
 type TargetPrefs = Pick<Preferences, 'dailyStudyTargetMin' | 'weeklyStudyTargetMin' | 'targetHistory'>;
 
 /** The daily target (minutes) that applied to a subject on a date — history-aware so changing a target never rewrites the past. */

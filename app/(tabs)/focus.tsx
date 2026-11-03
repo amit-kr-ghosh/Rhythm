@@ -5,7 +5,7 @@ import { Banner, Button, Card, EmptyState, IconButton, ProgressRing, Row, Screen
 import { DurationStepper, Field, Segmented, Select } from '../../src/components/inputs';
 import { formatClock } from '../../src/domain/time';
 import { confirm } from '../../src/components/feedback';
-import { formatCompact, trackedSubjects } from '../../src/domain/study';
+import { formatCompact, selectableSubjects } from '../../src/domain/study';
 import { PulseDot, Reveal } from '../../src/components/motion';
 import { SessionRow } from '../../src/components/focus/SessionRow';
 import { useTheme } from '../../src/theme/ThemeProvider';
@@ -40,7 +40,7 @@ function SetupTimer() {
   const params = useLocalSearchParams() as { occurrenceKey?: string; subjectId?: string; taskId?: string };
   const prefs = useApp((s) => s.data.prefs);
   const allSubjectsRaw = useApp((s) => s.data.subjects);
-  const subjects = useMemo(() => trackedSubjects(allSubjectsRaw), [allSubjectsRaw]);
+  const subjects = useMemo(() => selectableSubjects(allSubjectsRaw), [allSubjectsRaw]);
   const today = useToday();
   const day = useDayModel(today);
   const studyToday = useStudyDay(today);

@@ -7,6 +7,8 @@ import { SyncEngine, normalizeRemote } from '../src/data/syncEngine';
 import { session, task, subjects, DSA, NOW_ISO } from './factories';
 import { toSession } from '../src/domain/sessions';
 import type { StudySession } from '../src/domain/types';
+import { SEED_EPOCH, buildDefaultPlans, buildDefaultSubjects, buildDefaultTemplates, subjectId } from '../src/domain/defaults';
+import { isForeignKeyError, parentRefs } from '../src/domain/sync';
 
 async function device(cloud: FakeCloud, t0 = 1_000_000) {
   let now = t0;
@@ -223,4 +225,116 @@ test('toSession output round-trips through SQLite JSON unchanged', async () => {
   const s = toSession({ ...session({ date: '2026-10-28' }) } as never, NOW_ISO);
   await repo.put('sessions', s);
   assert.deepEqual(await repo.get('sessions', s.id), s);
+});
+
+/* ---------- foreign keys: the "study_sessions_subject_id_fk" bug ---------- */
+
+const seedStamp = <T extends { createdAt: string; updatedAt: string }>(e: T): T => ({ ...e, createdAt: SEED_EPOCH, updatedAt: SEED_EPOCH });
+async function seededDevice(cloud: FakeCloud) {
+  const d = await device(cloud);
+  // Exactly what the app does on first launch: untouched defaults, stamped with the seed epoch, never queued.
+  await d.repo.put('subjects', buildDefaultSubjects(NOW_ISO).map(seedStamp), { enqueue: false });
+  await d.repo.put('plans', buildDefaultPlans(NOW_ISO).map(seedStamp), { enqueue: false });
+  return d;
+}
+
+test('FK: a session on a built-in (never-uploaded) subject syncs — the parent subject is uploaded first', async () => {
+  const cloud = new FakeCloud(); cloud.enforceForeignKeys = true;
+  const d = await seededDevice(cloud);
+  await d.repo.put('sessions', session({ date: '2026-10-28', subjectId: DSA }));
+  const st = await d.engine.syncNow();
+  assert.equal(st.state, 'idle'); assert.equal(st.failed, 0); assert.equal(st.pending, 0);
+  assert.equal(cloud.rows('study_sessions').length, 1);
+  assert.deepEqual(cloud.rows('subjects').map((r) => r.id), [DSA], 'only the referenced default is uploaded');
+});
+
+test('FK: ops that already FAILED with the foreign-key error recover on "Retry failed changes"', async () => {
+  const cloud = new FakeCloud(); cloud.enforceForeignKeys = true;
+  const d = await seededDevice(cloud);
+  const s = session({ date: '2026-10-28', subjectId: DSA });
+  await d.repo.put('sessions', s);
+  const op = (await d.repo.outbox())[0]!;
+  await d.repo.saveOpFailure({ ...op, status: 'failed', attempts: 1, lastError: 'insert or update on table "study_sessions" violates foreign key constraint "study_sessions_subject_id_fk"' });
+  assert.equal((await d.repo.outboxCounts()).failed, 1);
+  const st = await d.engine.retryFailed();
+  assert.equal(st.failed, 0); assert.equal(st.state, 'idle');
+  assert.equal(cloud.rows('study_sessions').length, 1);
+});
+
+test('FK: a real subject whose own upload was lost is repaired from the local copy', async () => {
+  const cloud = new FakeCloud(); cloud.enforceForeignKeys = true;
+  const d = await device(cloud);
+  const [first] = subjects();
+  await d.repo.put('subjects', first!, { enqueue: false }); // edited subject, but its op never reached the queue
+  await d.repo.put('sessions', session({ date: '2026-10-28', subjectId: first!.id }));
+  const st = await d.engine.syncNow();
+  assert.equal(st.failed, 0);
+  assert.equal(cloud.rows('study_sessions').length, 1);
+  assert.equal(cloud.rows('subjects').length, 1);
+});
+
+test('FK: a reference to a subject that exists nowhere is cleared instead of blocking the row forever', async () => {
+  const cloud = new FakeCloud(); cloud.enforceForeignKeys = true;
+  const d = await device(cloud);
+  const s = session({ date: '2026-10-28', subjectId: '99999999-9999-4999-8999-999999999999' });
+  await d.repo.put('sessions', s);
+  const st = await d.engine.syncNow();
+  assert.equal(st.failed, 0); assert.equal(st.pending, 0);
+  assert.equal(cloud.rows('study_sessions')[0]!.subject_id, null);
+  assert.equal(cloud.rows('study_sessions')[0]!.focus_sec, s.focusSec, 'the session itself is kept');
+});
+
+test('FK: a timetable block on a default plan + subject uploads parents before the child', async () => {
+  const cloud = new FakeCloud(); cloud.enforceForeignKeys = true;
+  const d = await seededDevice(cloud);
+  const [tpl] = buildDefaultTemplates('2026-10-28', NOW_ISO).filter((x) => x.subjectId === DSA);
+  await d.repo.put('templates', { ...tpl!, updatedAt: '2026-10-28T06:00:00.000Z' });
+  const st = await d.engine.syncNow();
+  assert.equal(st.failed, 0);
+  assert.equal(cloud.rows('activity_templates').length, 1);
+  assert.equal(cloud.rows('timetable_templates').length, 1);
+  assert.equal(cloud.rows('subjects').length, 1);
+});
+
+test('FK: uploading an untouched default can never overwrite a newer cloud edit (updated_at guard)', async () => {
+  const cloud = new FakeCloud(); cloud.enforceForeignKeys = true;
+  const A = await device(cloud);
+  const renamed = { ...buildDefaultSubjects(NOW_ISO)[0]!, name: 'Data Structures', updatedAt: '2026-10-28T07:00:00.000Z' };
+  await A.repo.put('subjects', renamed); await A.engine.syncNow();
+  const B = await seededDevice(cloud);
+  await B.repo.put('sessions', session({ date: '2026-10-28', subjectId: DSA }));
+  await B.engine.syncNow();
+  assert.equal(cloud.rows('subjects')[0]!.name, 'Data Structures');
+  assert.equal((await B.repo.get('subjects', DSA))?.name, 'Data Structures', 'device B pulls the real name');
+  assert.equal(cloud.rows('study_sessions').length, 1);
+});
+
+test('subjects: delete is a tombstone that syncs; sessions keep their history and stay valid in the cloud', async () => {
+  const cloud = new FakeCloud(); cloud.enforceForeignKeys = true;
+  const A = await device(cloud), B = await device(cloud);
+  const [sub] = subjects();
+  await A.repo.put('subjects', sub!);
+  const t = task({ subjectId: sub!.id, title: 'linked' });
+  const s = session({ date: '2026-10-28', subjectId: sub!.id });
+  await A.repo.put('tasks', t); await A.repo.put('sessions', s); await A.engine.syncNow(); await B.engine.syncNow();
+  assert.equal((await B.repo.all('subjects')).length, 1);
+  // What actions.deleteSubject does: unlink the task, keep the session, tombstone the subject.
+  await A.repo.put('tasks', { ...t, subjectId: null, updatedAt: '2026-10-28T09:00:00.000Z' });
+  await A.repo.softDelete('subjects', sub!.id, '2026-10-28T09:00:00.000Z');
+  const st = await A.engine.syncNow(); await B.engine.syncNow();
+  assert.equal(st.failed, 0);
+  assert.equal((await B.repo.all('subjects')).length, 0, 'gone on the other device');
+  assert.equal((await B.repo.get('sessions', s.id))?.subjectId, sub!.id, 'history is untouched');
+  assert.equal((await B.repo.get('tasks', t.id))?.subjectId, null);
+  assert.equal(cloud.rows('study_sessions').length, 1);
+});
+
+test('domain: parentRefs / isForeignKeyError', () => {
+  assert.deepEqual(parentRefs('sessions', { subjectId: 'a', taskId: null }).map((r) => `${r.kind}:${r.id}`), ['subjects:a']);
+  assert.deepEqual(parentRefs('habitRecords', { habitId: 'h' }).map((r) => r.nullable), [false]);
+  assert.deepEqual(parentRefs('logs', { subjectId: 'x' }), []);
+  assert.equal(isForeignKeyError({ code: '23503' }), true);
+  assert.equal(isForeignKeyError({ message: 'insert or update on table "study_sessions" violates foreign key constraint "study_sessions_subject_id_fk"' }), true);
+  assert.equal(isForeignKeyError({ code: '23514' }), false);
+  assert.equal(subjectId('dsa'), DSA);
 });

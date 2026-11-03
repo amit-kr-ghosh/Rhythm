@@ -27,6 +27,7 @@ export default function SettingsHome() {
       </Group>
       <Group title="Personalise">
         <NavRow icon="contrast-outline" title="Appearance" value={THEME_LABEL[prefs.theme]} onPress={go('/settings/appearance')} />
+        <NavRow icon="library-outline" title="Subjects" value="Add, edit or delete" onPress={go('/subjects')} />
         <NavRow icon="flag-outline" title="Study targets" value={`${formatDuration(prefs.dailyStudyTargetMin)} / day · ${formatDuration(prefs.weeklyStudyTargetMin)} / week`} onPress={go('/settings/goals')} />
         <NavRow icon="calendar-outline" title="Timetable" value={`Week starts ${WEEK_LABEL[prefs.weekStart]}`} onPress={go('/settings/timetable')} />
         <NavRow icon="timer-outline" title="Focus timer" value={`${selectableMode(prefs.timer.mode) === 'pomodoro' ? 'Pomodoro' : 'Stopwatch'} · ${prefs.timer.focusMin}/${prefs.timer.breakMin} min`} onPress={go('/settings/timer')} />

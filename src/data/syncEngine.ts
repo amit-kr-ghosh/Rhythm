@@ -1,7 +1,8 @@
 import {
-  CLOUD_TABLE, SINGLETON_KINDS, cloudConflictTarget, dueOps, fromCloudRow, markFailure, orderForPush, toCloudRow,
+  CLOUD_TABLE, SINGLETON_KINDS, cloudConflictTarget, dueOps, fromCloudRow, isForeignKeyError, markFailure, orderForPush, parentRefs, toCloudRow,
   type OutboxOp,
 } from '../domain/sync';
+import { isUntouchedSeed } from '../domain/defaults';
 import { ENTITY_KINDS, type EntityKind, type EntityMap } from '../domain/types';
 import type { Repo } from './repo';
 
@@ -157,11 +158,22 @@ export class SyncEngine {
     return true;
   }
 
-  private async pushGroup(uid: string, kind: EntityKind, ops: OutboxOp[]): Promise<boolean> {
+  /**
+   * `stage` 0 = normal send (after making sure untouched default parents exist in the cloud);
+   * 1 = after uploading every local parent the batch points at (self-heal for a missing parent);
+   * 2 = last resort for a single row: clear optional references whose parent no longer exists anywhere.
+   */
+  private async pushGroup(uid: string, kind: EntityKind, ops: OutboxOp[], stage: 0 | 1 | 2 = 0): Promise<boolean> {
     const table = CLOUD_TABLE[kind];
     const target = cloudConflictTarget(kind);
-    const rows = ops.map((o) => toCloudRow(kind, (o.payload ?? {}) as Record<string, unknown>, uid));
     try {
+      await this.uploadParents(uid, kind, ops, stage === 0 ? 'seeds' : 'all');
+      const rows: Record<string, unknown>[] = [];
+      for (const o of ops) {
+        const payload = { ...((o.payload ?? {}) as Record<string, unknown>) };
+        if (stage === 2) for (const ref of await this.danglingRefs(kind, payload)) payload[ref.field] = null;
+        rows.push(toCloudRow(kind, payload, uid));
+      }
       const applied = await this.sendWithAuthRetry(table, rows, target);
       for (const o of ops) {
         // The server ignores writes older than what it holds. Keep our version in the conflict log so the user's
@@ -174,18 +186,55 @@ export class SyncEngine {
     } catch (e) {
       const err = toCloudError(e);
       if (isNetworkError(err)) { this.setStatus({ lastError: err.message ?? 'Network unavailable' }); return false; }
+      // A row points at a parent the server does not have. Upload the parents from this device and try again.
+      if (isForeignKeyError(err) && stage === 0) return this.pushGroup(uid, kind, ops, 1);
       if (ops.length > 1) {
         // One bad row must not block its neighbours: isolate by retrying individually.
         let reachable = true;
-        for (const o of ops) { if (reachable) reachable = await this.pushGroup(uid, kind, [o]); }
+        for (const o of ops) { if (reachable) reachable = await this.pushGroup(uid, kind, [o], stage); }
         return reachable;
       }
       const op = ops[0] as OutboxOp;
+      if (isForeignKeyError(err) && stage === 1 && (await this.danglingRefs(kind, (op.payload ?? {}) as Record<string, unknown>)).length > 0) {
+        return this.pushGroup(uid, kind, ops, 2);
+      }
       const failed = markFailure(op, err, this.now(), this.random());
       await this.repo.saveOpFailure(failed);
       this.setStatus({ lastError: failed.lastError });
       return err.status === undefined || err.status < 500 ? true : false;
     }
+  }
+
+  /**
+   * Make sure the rows these ops reference exist in the cloud before the ops themselves are sent (cloud foreign keys).
+   * 'seeds': only untouched built-in defaults, which are deliberately never queued on their own, once per account.
+   * 'all': every referenced parent that exists on this device (repair after a foreign-key rejection).
+   * Uploads are idempotent upserts guarded by updated_at, so they can never overwrite newer cloud data.
+   */
+  private async uploadParents(uid: string, kind: EntityKind, ops: OutboxOp[], mode: 'seeds' | 'all'): Promise<void> {
+    const visited = new Set<string>();
+    const ensure = async (ref: { kind: EntityKind; id: string }): Promise<void> => {
+      const key = `${ref.kind}:${ref.id}`;
+      if (visited.has(key)) return;
+      visited.add(key);
+      const flag = `parentSent:${uid}:${key}`;
+      if (mode === 'seeds' && (await this.repo.kvGet(flag)) !== null) return;
+      const parent = await this.repo.get(ref.kind, ref.id);
+      if (!parent) return;
+      if (mode === 'seeds' && !isUntouchedSeed(parent)) return; // real edits are queued on their own
+      const rec = parent as unknown as Record<string, unknown>;
+      for (const up of parentRefs(ref.kind, rec)) await ensure(up); // grandparents first
+      await this.sendWithAuthRetry(CLOUD_TABLE[ref.kind], [toCloudRow(ref.kind, rec, uid)], cloudConflictTarget(ref.kind));
+      await this.repo.kvSet(flag, '1');
+    };
+    for (const o of ops) for (const ref of parentRefs(kind, o.payload)) await ensure(ref);
+  }
+
+  /** Optional references whose target exists neither on this device nor (therefore) can be uploaded. */
+  private async danglingRefs(kind: EntityKind, payload: Record<string, unknown>) {
+    const out = [];
+    for (const ref of parentRefs(kind, payload)) if (ref.nullable && !(await this.repo.get(ref.kind, ref.id))) out.push(ref);
+    return out;
   }
 
   private async sendWithAuthRetry(table: string, rows: Record<string, unknown>[], target: string): Promise<string[] | void> {
