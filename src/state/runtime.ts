@@ -12,7 +12,9 @@ import {
   SEED_EPOCH, buildDefaultNotificationSettings, buildDefaultPlans, buildDefaultPreferences, buildDefaultSubjects, buildDefaultTemplates,
 } from '../domain/defaults';
 import { toDateKey } from '../domain/time';
-import { planNotifications, planTimerNotifications } from '../domain/notify';
+import { MAX_SCHEDULED, planNotifications, planTimerNotifications } from '../domain/notify';
+import { normalizeAlertPrefs } from '../domain/alerts';
+import { startAlertWatcher } from './alertRuntime';
 import { recoverTimer, type TimerState } from '../domain/timer';
 import { recordTargets } from '../domain/progress';
 import { applyDefaultsV2, applyDesignV3 } from '../data/upgrade';
@@ -160,7 +162,8 @@ export async function replanNotifications(): Promise<void> {
     tasks: d.tasks, habits: d.habits, habitRecords: d.habitRecords, today: toDateKey(new Date(now)),
   });
   const timerPlanned = s.timer ? planTimerNotifications(s.timer, now, d.notif, d.prefs.timer.breakReminders) : [];
-  await applyPlan(d.notif.enabled ? [...planned, ...timerPlanned] : []);
+  // Timer boundaries take their slots first; the general plan fills the rest, so the platform cap (64 on iOS) is never exceeded.
+  await applyPlan(d.notif.enabled ? [...planned.slice(0, MAX_SCHEDULED - timerPlanned.length), ...timerPlanned] : []);
   store.set({ notifPermission: await getPermission() });
 }
 
@@ -218,7 +221,7 @@ export async function boot(): Promise<void> {
       onRemoteChange: (kinds) => { void reloadKinds(kinds); },
     });
 
-    store.set({ data: await loadAll() });
+    store.set({ data: await loadAll(), alertPrefs: normalizeAlertPrefs(await repo.kvJson<unknown>('alertPrefs')) });
     // Keep dated target history so changing a target later never rewrites past days.
     const d = store.get().data;
     const hist = recordTargets(d.prefs.targetHistory, toDateKey(new Date()), d.prefs, d.subjects);
@@ -233,6 +236,7 @@ export async function boot(): Promise<void> {
     initNotifications(handleNotificationTap);
     store.set({ notifPermission: await getPermission(), ready: true });
     scheduleReplan(300);
+    void startAlertWatcher();
     if (upgrade.timetableSkipped) showToast('info', 'Your custom timetable was kept. The new default is in Timetable → ⋯ → Restore default.');
 
     NetInfo.addEventListener((n) => { if (n.isConnected && store.get().auth) scheduleSync(500); });

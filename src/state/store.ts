@@ -6,6 +6,7 @@ import type {
 import type { TimerState } from '../domain/timer';
 import type { SyncStatus } from '../data/syncEngine';
 import { buildDefaultNotificationSettings, buildDefaultPreferences } from '../domain/defaults';
+import { DEFAULT_ALERT_PREFS, type AlertPrefs, type TimerEvent } from '../domain/alerts';
 
 export type AppData = {
   subjects: Subject[]; plans: Plan[]; templates: ActivityTemplate[]; exceptions: ScheduleException[];
@@ -17,6 +18,8 @@ export type AppData = {
 export type TimerPrompt = { state: TimerState; lastSeen: number; gapMs: number };
 export type AuthUser = { userId: string; email: string | null };
 export type Toast = { id: number; kind: 'success' | 'info' | 'error'; text: string };
+/** The on-screen alert for a timer boundary (or a test). `late` alerts were noticed after the fact and are silent. */
+export type TimerAlert = { id: string; kind: TimerEvent['kind'] | 'test'; title: string; body: string; late: boolean; at: number };
 
 export type AppState = {
   ready: boolean;
@@ -33,6 +36,10 @@ export type AppState = {
   toast: Toast | null;
   /** Bumped when notification permission/schedule changes so settings UIs refresh. */
   notifPermission: 'granted' | 'denied' | 'undetermined';
+  /** Sound / vibration / keep-awake for timer alerts. Per device (not synced). */
+  alertPrefs: AlertPrefs;
+  /** The alert currently on screen, if any. */
+  alert: TimerAlert | null;
 };
 
 type Listener = () => void;
@@ -104,6 +111,7 @@ export const store = createStore<AppState>({
   timer: null, timerPrompt: null,
   sync: { state: 'signed_out', pending: 0, failed: 0, lastSyncAt: null, lastError: null },
   auth: null, pendingAccountDecision: null, systemScheme: null, toast: null, notifPermission: 'undetermined',
+  alertPrefs: DEFAULT_ALERT_PREFS, alert: null,
 }, (next, previous) => ({
   ...next,
   // An accidental `data: undefined` patch must never erase the last valid application data.

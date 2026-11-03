@@ -17,6 +17,13 @@ export default function Root({ children }: { children: React.ReactNode }) {
         <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
         <ScrollViewStyleReset />
         <meta name="theme-color" content="#1F1D26" />
+        {/* Installable web app: needed for notifications on iPhone/iPad (Add to Home Screen) and gives Android a proper app icon. */}
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="Rhythm" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <style dangerouslySetInnerHTML={{ __html: `
           html, body, #root { height: 100%; background: #F6EAEA; }
           html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }

@@ -20,7 +20,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "export:web": "expo export --platform web",
-    "test:browser": "node tests/browser/idb.browser.mjs",
+    "test:browser": "node tests/browser/idb.browser.mjs && node tests/browser/alerts.browser.mjs",
     "dev:android-native": "expo run:android",
     "fix-deps": "expo install --fix",
     "export:android": "expo export --platform android",

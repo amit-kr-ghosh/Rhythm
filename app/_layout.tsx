@@ -11,6 +11,7 @@ import { store, useApp } from '../src/state/store';
 import { Button, LoadingView, Screen, Text } from '../src/components/ui';
 import { ToastHost, choose } from '../src/components/feedback';
 import { DialogHost } from '../src/components/dialog';
+import { TimerAlertHost } from '../src/components/TimerAlertHost';
 import { WebModalFrame } from '../src/components/WebModalFrame';
 import { formatDuration } from '../src/domain/time';
 
@@ -85,6 +86,7 @@ function Gate() {
           <LoadingView label="Starting Rhythm" />
         </View>
       ) : null}
+      <TimerAlertHost />
       <ToastHost />
       <DialogHost />
     </View>

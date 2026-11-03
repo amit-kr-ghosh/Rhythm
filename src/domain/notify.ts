@@ -6,8 +6,9 @@ import type {
 } from './types';
 import type { TimerState } from './timer';
 import { runningMs } from './timer';
+import { boundariesUntil, wantsSystemNotification } from './alerts';
 
-export type Channel = 'activities' | 'study' | 'tasks' | 'goals' | 'breaks' | 'habits' | 'summary' | 'motivation';
+export type Channel = 'activities' | 'study' | 'tasks' | 'goals' | 'breaks' | 'timer' | 'habits' | 'summary' | 'motivation';
 export type PlannedNotification = {
   /** Stable id so re-planning never duplicates. */
   id: string; channel: Channel; title: string; body: string; at: number; data: Record<string, string>;
@@ -109,22 +110,21 @@ export function planNotifications(i: PlanInput): PlannedNotification[] {
   return out.sort((a, b) => a.at - b.at).slice(0, MAX_SCHEDULED);
 }
 
-/** Notifications to schedule while a timer is running, so phase changes/completion reach the user while backgrounded. */
+/** How many upcoming timer boundaries are pre-scheduled as OS notifications (a Pomodoro has two per round). */
+export const TIMER_LOOKAHEAD = 8;
+
+/**
+ * Notifications to schedule while a timer is running, so phase changes/completion reach the user while the app is
+ * backgrounded or closed (native only: browsers cannot schedule for a closed page, so the web layer delivers the same events
+ * from its in-page watcher instead).
+ */
 export function planTimerNotifications(t: TimerState, now: number, s: NotificationSettings, breakReminders: boolean): PlannedNotification[] {
-  if (!s.enabled || t.status !== 'running') return [];
-  const out: PlannedNotification[] = [];
+  if (t.status !== 'running' || !wantsSystemNotification(t, s, breakReminders)) return [];
   const r = runningMs(t, now);
-  if (t.mode === 'countdown') {
-    if (r < t.focusMs) {
-      out.push({ id: `timer:${t.id}:done`, channel: 'breaks', at: now + (t.focusMs - r), title: 'Focus session complete', body: 'Open Rhythm to save your session.', data: { type: 'timer', id: t.id } });
-    }
-  } else if (t.mode === 'pomodoro' && breakReminders && t.focusMs + t.breakMs > 0) {
-    const cycle = t.focusMs + t.breakMs;
-    for (let k = 0; k < 4; k++) {
-      const focusEnd = k * cycle + t.focusMs, breakEnd = (k + 1) * cycle;
-      if (focusEnd > r) out.push({ id: `timer:${t.id}:f${k}`, channel: 'breaks', at: now + (focusEnd - r), title: 'Time for a break', body: 'Nice work. Step away for a few minutes.', data: { type: 'timer', id: t.id } });
-      if (breakEnd > r) out.push({ id: `timer:${t.id}:b${k}`, channel: 'breaks', at: now + (breakEnd - r), title: 'Break over', body: 'Ready for the next focus block?', data: { type: 'timer', id: t.id } });
-    }
-  }
-  return out.filter((n) => n.at > now);
+  // Scan far enough ahead to collect TIMER_LOOKAHEAD boundaries beyond the current position.
+  const cycle = t.focusMs + Math.max(0, t.breakMs);
+  const upcoming = boundariesUntil(t, r + (cycle > 0 ? cycle : t.focusMs) * (TIMER_LOOKAHEAD / 2 + 1)).filter((e) => e.offsetMs > r).slice(0, TIMER_LOOKAHEAD);
+  return upcoming.map((e) => ({
+    id: `timer:${e.id}`, channel: 'timer' as Channel, at: now + (e.offsetMs - r), title: e.title, body: e.body, data: { type: 'timer', id: t.id },
+  }));
 }

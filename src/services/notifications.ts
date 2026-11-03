@@ -3,8 +3,13 @@ import { Platform } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import type * as NotificationsType from 'expo-notifications';
 import type { Channel, PlannedNotification } from '../domain/notify';
+import { store } from '../state/store';
 
 export type PermissionState = 'granted' | 'denied' | 'undetermined';
+export type NotificationSupport = 'supported' | 'ios-needs-install' | 'unsupported';
+
+/** Browsers can lack notification support (notably iPhone Safari outside an installed web app); phones always have it. */
+export const notificationSupport = (): NotificationSupport => 'supported';
 
 let mod: typeof NotificationsType | null | undefined;
 
@@ -54,6 +59,13 @@ export const CHANNELS: Record<
   breaks: {
     name: 'Breaks & focus timer',
     description: 'Break reminders and focus-session completion',
+    importance: 'HIGH',
+  },
+  // Channels are immutable once created on a device, so the sound/vibration settings the timer needs live in a new channel id
+  // instead of changing `breaks` (which existing installs already created without them).
+  timer: {
+    name: 'Timer alerts',
+    description: 'Sound and vibration when a focus block, break or countdown ends',
     importance: 'HIGH',
   },
   habits: {
@@ -126,7 +138,10 @@ export async function ensureChannels(): Promise<void> {
           lockscreenVisibility:
             Notifications.AndroidNotificationVisibility.PRIVATE,
         };
-        if (channel.importance !== 'LOW') options.vibrationPattern = [0, 200];
+        if (channel.importance !== 'LOW') {
+          options.vibrationPattern = id === 'timer' ? [0, 250, 120, 250, 120, 500] : [0, 200];
+          options.sound = 'default';
+        }
 
         await Notifications.setNotificationChannelAsync(id, options);
       } catch (error) {
@@ -162,10 +177,12 @@ export function initNotifications(
 
   try {
     Notifications.setNotificationHandler({
-      handleNotification: async () => ({
+      // While the app is open, a timer notification still plays the system sound (it is the alert, unless sound is off in
+      // Settings); other reminders stay quiet in the foreground because the screen already shows what is happening.
+      handleNotification: async (notification) => ({
         shouldShowBanner: true,
         shouldShowList: true,
-        shouldPlaySound: false,
+        shouldPlaySound: notification.request.content.data?.type === 'timer' ? store.get().alertPrefs.sound : false,
         shouldSetBadge: false,
       }),
     });
@@ -291,6 +308,8 @@ export function applyPlan(
             title: notification.title,
             body: notification.body,
             data: notification.data,
+            // iOS plays the sound named here; Android plays the channel's sound (set when the channel was created).
+            sound: store.get().alertPrefs.sound,
           },
           trigger,
         });
@@ -310,4 +329,30 @@ export function applyPlan(
   chain = job.catch(() => undefined);
 
   return job;
+}
+
+/** Show nothing: on a phone the OS notifications scheduled by applyPlan already cover the "app in background" case. */
+export async function presentNow(_p: Pick<PlannedNotification, 'id' | 'title' | 'body' | 'data'>): Promise<boolean> { return false; }
+
+/** Schedule a one-off test notification through the OS, so it can be seen firing with the app in the background. */
+export async function scheduleTestNotification(seconds: number): Promise<boolean> {
+  const Notifications = N();
+  if (!Notifications || (await getPermission()) !== 'granted') return false;
+  try {
+    await ensureChannels();
+    const trigger: NotificationsType.TimeIntervalTriggerInput = {
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+      seconds: Math.max(1, Math.round(seconds)),
+      ...(Platform.OS === 'android' && channelsReady ? { channelId: 'timer' } : {}),
+    };
+    await Notifications.scheduleNotificationAsync({
+      identifier: 'rhythm-test-alert',
+      content: { title: 'Rhythm test alert', body: 'This is how a finished focus block will sound and look.', data: { type: 'timer', test: '1' }, sound: store.get().alertPrefs.sound },
+      trigger,
+    });
+    return true;
+  } catch (error) {
+    console.warn('Could not schedule the test notification:', error);
+    return false;
+  }
 }

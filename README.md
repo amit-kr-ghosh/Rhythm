@@ -121,6 +121,21 @@ While developing, you do not need a build: pull, run `npx expo start --clear` an
 
 ---
 
+## Alerts when a timer ends (sound, notification, vibration)
+
+| Situation | What happens |
+|---|---|
+| Rhythm open and in front (any screen) | On-screen card + sound (chime / bell / beep / gentle, volume, repeat) + vibration |
+| Browser tab in the background | Same, plus a system notification (service worker) and a flashing tab title; the title also shows the live countdown |
+| Phone app (Expo) in background or closed | OS notification on the new "Timer alerts" channel, scheduled ahead of time, with sound and vibration |
+| Tab frozen / phone locked / browser closed | **Nothing can run.** Browsers cannot do this without a push server (see below). Keep the screen on (Settings → Notifications → "Keep the screen on", on by default) |
+
+Settings → Notifications → *Sound & vibration* has a "Test alert in 5 seconds" button: start it, then switch tabs or lock the phone to see what your device really does.
+iPhone/iPad: browsers only allow notifications for apps added to the Home Screen (Share → Add to Home Screen). A manifest and icons are included for that.
+Pomodoro notifications follow Settings → Focus timer → *Break reminders*, and *Breaks & focus complete* in Notifications.
+Code: `src/domain/alerts.ts`, `sounds.ts`, `src/state/alertRuntime.ts`, `src/services/alerts(.web).ts`, `public/sw.js`. Tests: `tests/alerts.test.ts` and `node tests/browser/alerts.browser.mjs` (real Chromium).
+Not verified: the Expo UI (never bundled here), real phones, iOS Safari, and the OS actually drawing a notification (headless Chromium cannot).
+
 ## Commands
 
 | Command | What it does |

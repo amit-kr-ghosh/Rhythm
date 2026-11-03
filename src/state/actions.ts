@@ -29,6 +29,7 @@ import { getEngine, getRepo, persistTimer, reloadAll, replanNotifications, sched
 import { LIST_KINDS, mergeIntoState, showToast, store, type ListKind } from './store';
 import { auth } from '../services/cloud';
 import { getPermission, requestPermission } from '../services/notifications';
+import { normalizeAlertPrefs, type AlertPrefs } from '../domain/alerts';
 
 const nowIso = (): string => new Date().toISOString();
 const today = (): DateKey => toDateKey(new Date());
@@ -85,6 +86,13 @@ export async function updateNotif(patch: Partial<Omit<NotificationSettings, keyo
   store.set((s) => ({ data: { ...s.data, notif: next } }));
   scheduleSync(); scheduleReplan(200);
   return { ok: true };
+}
+
+/** Sound / vibration / keep-awake for timer alerts. Stored on this device only. */
+export async function updateAlertPrefs(patch: Partial<AlertPrefs>): Promise<void> {
+  const next = normalizeAlertPrefs({ ...store.get().alertPrefs, ...patch });
+  store.set({ alertPrefs: next });
+  try { await getRepo().kvSet('alertPrefs', JSON.stringify(next)); } catch { /* the choice still applies for this session */ }
 }
 
 /** Explain-then-ask flow lives in the UI; this performs the OS request and turns reminders on only if granted. */

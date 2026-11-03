@@ -11,7 +11,9 @@ import { SessionRow } from '../../src/components/focus/SessionRow';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useApp } from '../../src/state/store';
 import { useStudyDay, useDayModel, useNow, useToday } from '../../src/state/hooks';
-import { cancelFocus, finishFocus, pauseFocus, resumeFocus, setTimerNote, startFocus, touchTimer } from '../../src/state/actions';
+import { cancelFocus, enableNotifications, finishFocus, pauseFocus, resumeFocus, setTimerNote, startFocus, touchTimer } from '../../src/state/actions';
+import { unlockAudio } from '../../src/services/alerts';
+import { nextTimerEvent } from '../../src/domain/alerts';
 import { phaseAt, runningMs, selectableMode } from '../../src/domain/timer';
 import { formatHMS, formatDuration } from '../../src/domain/time';
 import { sessionsOn } from '../../src/domain/progress';
@@ -23,6 +25,21 @@ const MODES: { value: SessionMode; label: string }[] = [
 
 /** 25:00 for sessions under an hour, 1:05:00 above — shorter than HH:MM:SS so it never overflows a phone. */
 const shortClock = (sec: number) => { const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), x = sec % 60; const p = (n: number) => String(n).padStart(2, '0'); return h > 0 ? `${h}:${p(m)}:${p(x)}` : `${p(m)}:${p(x)}`; };
+
+/** Offers to turn on notifications where it matters: starting or running a timer that will end with an alert. */
+function AlertHint({ running }: { running: boolean }) {
+  const enabled = useApp((s) => s.data.notif.enabled);
+  const perm = useApp((s) => s.notifPermission);
+  const prefs = useApp((s) => s.alertPrefs);
+  const [busy, setBusy] = useState(false);
+  if (enabled && perm === 'granted') return null;
+  if (perm === 'denied') return <Banner tone="warning" text={Platform.OS === 'web' ? 'Notifications are blocked for this site, so you will only be alerted while this tab is in front. You can allow them from the padlock icon in the address bar.' : 'Notifications are blocked in your phone settings, so you will not be alerted when a session ends in the background.'} />;
+  const sound = prefs.sound ? 'You will hear a sound' : 'You will see an alert';
+  const text = Platform.OS === 'web'
+    ? `${sound} when ${running ? 'this' : 'a'} session ends while Rhythm is open. Turn on notifications to also be told when this tab is in the background.`
+    : `Turn on notifications to be alerted when ${running ? 'this' : 'a'} session or break ends, even with the app closed.`;
+  return <Banner tone="info" text={text} actionLabel={busy ? 'Asking…' : 'Turn on'} onAction={() => { setBusy(true); void enableNotifications().finally(() => setBusy(false)); }} />;
+}
 
 /** Web only: single-column pages stay a comfortable reading width on big monitors. */
 const WEB_NARROW = Platform.OS === 'web' ? { maxWidth: 820 } : undefined;
@@ -69,6 +86,7 @@ function SetupTimer() {
 
   const start = useCallback(async () => {
     if (busy) return;
+    unlockAudio(); // the tap that starts the timer is the user gesture browsers need before they will play its end-of-session sound
     if (!subjectId) { setError('Pick a subject first.'); return; }
     setBusy(true); setError(null);
     const res = await startFocus({ mode, focusMin, breakMin, subjectId, occurrenceKey, taskId });
@@ -127,6 +145,7 @@ function SetupTimer() {
         ) : null}
       </Card>
 
+      {mode === 'pomodoro' ? <AlertHint running={false} /> : null}
       {error ? <Banner tone="danger" text={error} /> : null}
       <Button label="Start focus" icon="play" variant="primary" onPress={start} loading={busy} />
 
@@ -173,6 +192,7 @@ function RunningTimer() {
   const shown = timer.mode === 'stopwatch' ? run : timer.mode === 'countdown' && phase.kind !== 'overtime' ? (phase.remainingMs ?? 0) : timer.mode === 'pomodoro' ? (phase.remainingMs ?? 0) : run - timer.focusMs;
   const phaseLabel = paused ? 'Paused' : timer.mode === 'stopwatch' ? 'Focusing' : phase.kind === 'break' ? `Break · round ${phase.cycle}` : phase.kind === 'overtime' ? 'Overtime — time is up' : timer.mode === 'pomodoro' ? `Focus · round ${phase.cycle}` : 'Focusing';
   const spoken = `${phaseLabel}. ${formatDuration(Math.floor(run / 60000))} recorded.`;
+  const next = nextTimerEvent(timer, nowMs);
 
   const onFinish = async () => {
     setBusy(true);
@@ -221,6 +241,8 @@ function RunningTimer() {
       </Row>
 
       <Field label="Session note" value={note} onChangeText={setNote} onSubmitEditing={() => { void setTimerNote(note); }} multiline placeholder="What are you working on?" hint="Saved with the session." />
+      {next ? <Text variant="caption" tone="muted">{`Next alert at ${new Date(next.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · ${next.event.title}`}</Text> : null}
+      {timer.mode !== 'stopwatch' ? <AlertHint running /> : null}
       {prefs.timer.breakReminders && timer.mode === 'pomodoro' ? <Text variant="caption" tone="muted">Break reminders are on. Change this in Settings → Focus timer.</Text> : null}
       <Button label="Discard session" variant="danger" onPress={onCancel} />
     </Screen>
