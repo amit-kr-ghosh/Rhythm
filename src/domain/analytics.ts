@@ -121,6 +121,44 @@ export function heatmap(sessions: StudySession[], range: Range, subjectId?: stri
   });
 }
 
+/* ------------- Per-subject views (stacked bars, coloured heatmap) ------------- */
+
+export type SubjectDay = { date: DateKey; totalMin: number; parts: { subjectId: string | null; min: number }[] };
+
+/** Focus minutes per day, split by subject. Parts are ordered by minutes (largest first, then subject id) so output is stable. */
+export function dailyFocusBySubject(sessions: StudySession[], range: Range, subjectId?: string | null): SubjectDay[] {
+  const byDay = new Map<DateKey, Map<string | null, number>>();
+  for (const s of filtered(sessions, range, subjectId)) {
+    const m = byDay.get(s.date) ?? new Map<string | null, number>();
+    m.set(s.subjectId, (m.get(s.subjectId) ?? 0) + focusMinOf(s));
+    byDay.set(s.date, m);
+  }
+  return dateRange(range.from, range.to).map((date) => {
+    const parts = [...(byDay.get(date) ?? new Map<string | null, number>()).entries()]
+      .map(([id, min]) => ({ subjectId: id, min: round1(min) }))
+      .sort((a, b) => b.min - a.min || String(a.subjectId ?? '~').localeCompare(String(b.subjectId ?? '~')));
+    return { date, totalMin: round1(parts.reduce((a, p) => a + p.min, 0)), parts };
+  });
+}
+
+export type HeatCell = { date: DateKey; min: number; level: 0 | 1 | 2 | 3 | 4; subjectId: string | null; color: string | null; parts: { subjectId: string | null; min: number }[] };
+
+/**
+ * Heatmap cells coloured by subject: each day takes the colour of the subject that got the most focus that day, and
+ * its intensity (level) is relative to the busiest day in the range. A day with no focus has level 0 and no colour.
+ */
+export function subjectHeatmap(sessions: StudySession[], subjects: Subject[], range: Range, subjectId?: string | null): HeatCell[] {
+  const days = dailyFocusBySubject(sessions, range, subjectId);
+  const max = Math.max(0, ...days.map((d) => d.totalMin));
+  const color = (id: string | null) => subjects.find((x) => x.id === id)?.color ?? null;
+  return days.map((d) => {
+    let level: 0 | 1 | 2 | 3 | 4 = 0;
+    if (d.totalMin > 0 && max > 0) { const r = d.totalMin / max; level = r > 0.75 ? 4 : r > 0.5 ? 3 : r > 0.25 ? 2 : 1; }
+    const top = d.parts[0];
+    return { date: d.date, min: d.totalMin, level, subjectId: top?.subjectId ?? null, color: top ? color(top.subjectId) : null, parts: d.parts };
+  });
+}
+
 /* ------------- Targets vs actual ------------- */
 
 export function targetCompletion(i: AnalyticsInput, range: Range, subjectId?: string | null): { date: DateKey; focusMin: number; targetMin: number | null; pct: number | null }[] {

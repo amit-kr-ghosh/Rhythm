@@ -5,6 +5,7 @@ import {
   previousMonth, previousRange, scheduledVsActualStudy, sessionCompletionRate, streaks, subjectDistribution, targetCompletion, taskStats, totalFocus,
   weekRange, type AnalyticsInput,
 } from '../src/domain/analytics';
+import { dailyFocusBySubject, subjectHeatmap } from '../src/domain/analytics';
 import { instantAt } from '../src/domain/time';
 import { AIML, DSA, log, prefs, session, subjects, task, templates } from './factories';
 
@@ -153,4 +154,38 @@ test('insights: flag a lagging subject and report week-over-week change from rea
   const ins = buildInsights(input(s));
   assert.ok(ins.some((x) => x.id === `lag-${DSA}` && x.tone === 'attention'), JSON.stringify(ins));
   assert.ok(ins.some((x) => x.id === 'wow'));
+});
+
+/* ---------- per-subject views ---------- */
+
+test('dailyFocusBySubject splits a day by subject, largest first, and keeps empty days', () => {
+  const subs = subjects();
+  const [a, b] = [subs[0]!, subs[1]!];
+  const sessions = [
+    session({ date: '2026-11-02', subjectId: a.id, minutes: 30 }),
+    session({ date: '2026-11-02', subjectId: b.id, minutes: 50 }),
+    session({ date: '2026-11-02', subjectId: a.id, minutes: 10 }),
+  ];
+  const days = dailyFocusBySubject(sessions, { from: '2026-11-01', to: '2026-11-03' });
+  assert.equal(days.length, 3);
+  assert.equal(days[0]!.totalMin, 0); assert.deepEqual(days[0]!.parts, []);
+  assert.equal(days[1]!.totalMin, 90);
+  assert.deepEqual(days[1]!.parts.map((p) => [p.subjectId, p.min]), [[b.id, 50], [a.id, 40]]);
+  assert.equal(dailyFocusBySubject(sessions, { from: '2026-11-02', to: '2026-11-02' }, a.id)[0]!.totalMin, 40, 'subject filter');
+});
+
+test('subjectHeatmap colours each day by its top subject and scales intensity to the busiest day', () => {
+  const subs = subjects();
+  const [a, b] = [subs[0]!, subs[1]!];
+  const sessions = [
+    session({ date: '2026-11-02', subjectId: a.id, minutes: 20 }),
+    session({ date: '2026-11-02', subjectId: b.id, minutes: 100 }),
+    session({ date: '2026-11-03', subjectId: a.id, minutes: 30 }),
+  ];
+  const cells = subjectHeatmap(sessions, subs, { from: '2026-11-01', to: '2026-11-04' });
+  assert.deepEqual(cells.map((c) => c.level), [0, 4, 1, 0]);
+  assert.equal(cells[1]!.color, b.color, 'busiest subject on 2 Nov is b');
+  assert.equal(cells[2]!.color, a.color);
+  assert.equal(cells[0]!.color, null, 'empty day has no colour');
+  assert.equal(cells[0]!.subjectId, null);
 });

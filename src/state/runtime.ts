@@ -9,7 +9,7 @@ import { cloudConfigured } from '../services/config';
 import { handleNotificationTap } from '../services/deepLinks';
 import { applyPlan, getPermission, initNotifications } from '../services/notifications';
 import {
-  SEED_EPOCH, buildDefaultNotificationSettings, buildDefaultPlans, buildDefaultPreferences, buildDefaultSubjects, buildDefaultTemplates,
+  SEED_EPOCH, buildDefaultNotificationSettings, buildDefaultPreferences, buildDefaultSubjects,
 } from '../domain/defaults';
 import { toDateKey } from '../domain/time';
 import { MAX_SCHEDULED, planNotifications, planTimerNotifications } from '../domain/notify';
@@ -42,11 +42,9 @@ const seedStamp = <T extends { createdAt: string; updatedAt: string }>(e: T): T 
 async function seedIfNeeded(r: Repo): Promise<void> {
   if ((await r.kvGet('seeded')) === '1') return;
   const nowIso = new Date().toISOString();
-  const today = toDateKey(new Date());
   // enqueue:false — untouched defaults are never uploaded, so they can't overwrite real cloud data (see SEED_EPOCH).
   await r.put('subjects', buildDefaultSubjects(nowIso).map(seedStamp), { enqueue: false });
-  await r.put('plans', buildDefaultPlans(nowIso).map(seedStamp), { enqueue: false });
-  await r.put('templates', buildDefaultTemplates(today, nowIso).map(seedStamp), { enqueue: false });
+  // No default timetable: the app tracks only the subjects and tasks the user adds.
   await r.put('preferences', seedStamp(buildDefaultPreferences(nowIso)), { enqueue: false });
   await r.put('notificationSettings', seedStamp(buildDefaultNotificationSettings(nowIso)), { enqueue: false });
   await r.kvSet('seeded', '1');
@@ -256,7 +254,7 @@ export async function boot(): Promise<void> {
 
 export const allKinds = ENTITY_KINDS;
 
-/** Wipe this device's data and re-seed the default timetable/subjects (used by "Delete my data"). */
+/** Wipe this device's data and re-seed the default subjects (used by "Delete my data"). */
 export async function resetLocalData(): Promise<void> {
   const r = getRepo();
   await r.wipe();

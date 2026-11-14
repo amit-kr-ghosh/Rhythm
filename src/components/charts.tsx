@@ -96,8 +96,18 @@ export function LineChart({ points, labels, height = 140, yMax = 100, summary, c
   );
 }
 
-/** GitHub-style calendar heatmap. Columns are weeks, rows are weekdays starting at `weekStart`. */
-export function Heatmap({ cells, weekStart = 1, summary }: { cells: { date: string; level: 0 | 1 | 2 | 3 | 4; min: number }[]; weekStart?: 0 | 1 | 6; summary: string }) {
+/** Opacity of a subject colour at each intensity level (level 0 uses the neutral empty colour instead). */
+const LEVEL_OPACITY = [0, 0.32, 0.55, 0.78, 1] as const;
+
+export type HeatCellView = { date: string; level: 0 | 1 | 2 | 3 | 4; min: number; color?: string | null };
+
+/**
+ * GitHub-style calendar heatmap. Columns are weeks, rows are weekdays starting at `weekStart`. A cell with a `color`
+ * is drawn in that colour (stronger = more focus); cells without one use the theme's neutral ramp. Cells are tappable.
+ */
+export function Heatmap({ cells, weekStart = 1, summary, selected, onSelect }: {
+  cells: HeatCellView[]; weekStart?: 0 | 1 | 6; summary: string; selected?: string | null; onSelect?: (date: string) => void;
+}) {
   const t = useTheme();
   const [w, setW] = React.useState(300);
   if (cells.length === 0) return null;
@@ -105,21 +115,68 @@ export function Heatmap({ cells, weekStart = 1, summary }: { cells: { date: stri
   const row = (d: string) => (dow(d) - weekStart + 7) % 7;
   const lead = row(cells[0]!.date);
   const cols = Math.ceil((cells.length + lead) / 7);
-  const gap = 3, size = Math.max(8, Math.min(20, (w - 20 - gap * (cols - 1)) / cols));
+  const gap = 3, left = 16, size = Math.max(8, Math.min(26, (w - left - gap * (cols - 1)) / cols));
+  const fillOf = (c: HeatCellView) => (c.level === 0 ? t.colors.heat[0] : c.color ?? t.colors.heat[c.level]);
   return (
-    <View accessible accessibilityLabel={summary} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
+    <View accessible={!onSelect} accessibilityLabel={summary} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
       <Svg width={w} height={7 * (size + gap) + 4}>
         {[0, 2, 4, 6].map((r) => <SvgText key={r} x={0} y={r * (size + gap) + size - 2} fontSize={9} fill={t.colors.textFaint}>{(WEEKDAY_SHORT[(r + weekStart) % 7] as string).slice(0, 1)}</SvgText>)}
         {cells.map((c, i) => {
           const idx = i + lead, col = Math.floor(idx / 7), r = idx % 7;
-          return <Rect key={c.date} x={16 + col * (size + gap)} y={r * (size + gap)} width={size} height={size} rx={4} fill={t.colors.heat[c.level]} />;
+          const on = selected === c.date;
+          return (
+            <Rect key={c.date} x={left + col * (size + gap)} y={r * (size + gap)} width={size} height={size} rx={Math.min(6, size / 3)}
+              fill={fillOf(c)} fillOpacity={c.level > 0 && c.color ? LEVEL_OPACITY[c.level] : 1}
+              stroke={on ? t.colors.text : 'none'} strokeWidth={on ? 2 : 0}
+              onPress={onSelect ? () => onSelect(c.date) : undefined} />
+          );
         })}
       </Svg>
       <Row gap={t.spacing.xs} style={{ marginTop: t.spacing.xs }}>
         <Text variant="caption" tone="muted">Less</Text>
-        {t.colors.heat.map((h, i) => <View key={i} style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: h }} />)}
+        {[0, 1, 2, 3, 4].map((l) => <View key={l} style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: l === 0 ? t.colors.heat[0] : t.colors.textMuted, opacity: l === 0 ? 1 : LEVEL_OPACITY[l as 1 | 2 | 3 | 4] }} />)}
         <Text variant="caption" tone="muted">More</Text>
       </Row>
+    </View>
+  );
+}
+
+export type StackedDay = { label: string; segments: { value: number; color: string; name?: string }[] };
+
+/** One bar per day, stacked by subject colour (largest segment at the bottom). The y-scale is the busiest day. */
+export function StackedBars({ days, height = 190, format = (v) => String(Math.round(v)), summary, target }: {
+  days: StackedDay[]; height?: number; format?: (v: number) => string; summary: string; target?: number | null;
+}) {
+  const t = useTheme();
+  const [w, setW] = React.useState(300);
+  const totals = days.map((d) => d.segments.reduce((a, s) => a + s.value, 0));
+  const max = Math.max(1, ...totals, target ?? 0);
+  const top = 20, bottom = 22, plot = height - top - bottom;
+  const gap = days.length > 20 ? 2 : 6;
+  const bw = Math.max(3, (w - gap * (days.length - 1)) / Math.max(1, days.length));
+  const every = Math.max(1, Math.ceil(days.length / 10));
+  return (
+    <View accessible accessibilityLabel={summary} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
+      <Svg width={w} height={height}>
+        <Line x1={0} x2={w} y1={top + plot} y2={top + plot} stroke={t.colors.border} strokeWidth={1} />
+        {target ? <Line x1={0} x2={w} y1={top + plot - (target / max) * plot} y2={top + plot - (target / max) * plot} stroke={t.colors.warning} strokeDasharray="4 5" strokeWidth={2} /> : null}
+        {days.map((d, i) => {
+          const x = i * (bw + gap);
+          let y = top + plot;
+          return (
+            <G key={`${d.label}-${i}`}>
+              {d.segments.filter((s) => s.value > 0).map((s, k, arr) => {
+                const h = Math.max(2, (s.value / max) * plot);
+                y -= h;
+                const first = k === 0, last = k === arr.length - 1;
+                return <Rect key={k} x={x} y={y} width={bw} height={h} rx={last || first ? Math.min(6, bw / 2) : 0} fill={s.color} />;
+              })}
+              {totals[i]! > 0 && days.length <= 10 ? <SvgText x={x + bw / 2} y={top + plot - (totals[i]! / max) * plot - 4} fontSize={10} fill={t.colors.textMuted} textAnchor="middle">{format(totals[i]!)}</SvgText> : null}
+              {i % every === 0 ? <SvgText x={x + bw / 2} y={height - 6} fontSize={10} fill={t.colors.textMuted} textAnchor="middle">{d.label}</SvgText> : null}
+            </G>
+          );
+        })}
+      </Svg>
     </View>
   );
 }

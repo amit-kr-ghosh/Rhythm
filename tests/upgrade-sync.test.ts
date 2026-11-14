@@ -38,12 +38,10 @@ test('upgrade on a v1 install: persisted locally, history intact, flag set', asy
   assert.deepEqual(subjects.filter((s) => !s.archived).map((s) => s.name).sort(), ['AI/ML', 'Communication', 'DSA', 'RBI Preparation']);
   assert.equal(subjects.find((s) => s.name === 'Backend Development')!.archived, true);
   assert.equal((await repo.get('preferences', 'preferences'))!.dailyStudyTargetMin, 390);
+  // The timetable is no longer part of the app: the upgrade leaves any stored timetable data exactly as it was.
   const templates = await repo.all('templates');
-  const active = templates.filter((t) => !t.deletedAt && t.effectiveTo === null);
-  assert.equal(active.length, 36);
-  // the old timetable still resolves for past days; the new one applies from today
-  assert.equal(resolveDay('2026-10-20', templates, []).length, 22, 'history keeps the old timetable');
-  assert.equal(resolveDay('2026-11-02', templates, []).length, 18, 'future days use the new default');
+  assert.equal(templates.filter((t) => !t.deletedAt && t.effectiveTo === null).length, legacyTemplates('2026-10-01', SEED_EPOCH).length, 'no timetable rows added, closed or rewritten');
+  assert.equal(resolveDay('2026-11-02', templates, []).length, resolveDay('2026-11-02', legacyTemplates('2026-10-01', SEED_EPOCH), []).length, 'old timetable untouched');
   assert.equal((await repo.get('sessions', old.id))!.focusSec, 40 * 60, 'session untouched');
   assert.equal(await repo.kvGet(DEFAULTS_V2_KEY), '1');
 });
@@ -57,10 +55,10 @@ test('upgrade is idempotent: a second run (e.g. next launch) changes nothing and
   // even with the flag cleared, the planner sees v2 rows and does nothing
   await repo.kvDelete(DEFAULTS_V2_KEY);
   await applyDefaultsV2(repo, NOW);
-  assert.equal((await repo.all('templates')).filter((t) => !t.deletedAt && t.effectiveTo === null).length, 36);
+  assert.equal(JSON.stringify([(await repo.all('templates')).length, (await repo.all('subjects')).length]), JSON.stringify(JSON.parse(before).slice(0, 2)));
 });
 
-test('upgrade syncs to Supabase and a second device converges on the same subjects, timetable and sessions', async () => {
+test('upgrade syncs to Supabase and a second device converges on the same subjects and sessions', async () => {
   const cloud = new FakeCloud();
   const a = await v1Device(cloud);
   await applyDefaultsV2(a.repo, NOW);
@@ -75,7 +73,6 @@ test('upgrade syncs to Supabase and a second device converges on the same subjec
   const b = new SyncEngine(repoB, cloud.client(), { now: () => NOW.getTime(), random: () => 0 });
   await b.syncNow();
   const bt = await repoB.all('templates');
-  assert.equal(resolveDay('2026-11-02', bt, []).length, 18);
   assert.equal(new Set(bt.map((t) => t.id)).size, bt.length, 'no duplicate timetable rows');
   const subjectsB = await repoB.all('subjects');
   const day = studyDay('2026-10-20', subjectsB, await repoB.all('sessions'), { ...buildDefaultPreferences(NOW.toISOString()), targetHistory: [] });

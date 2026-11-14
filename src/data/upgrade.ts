@@ -1,5 +1,5 @@
 import type { Repo } from './repo';
-import { DEFAULTS_V2_KEY, buildDefaultPlans, planDefaultsV2 } from '../domain/defaults';
+import { DEFAULTS_V2_KEY, planDefaultsV2 } from '../domain/defaults';
 import { recordTargets } from '../domain/progress';
 import { toDateKey } from '../domain/time';
 
@@ -22,11 +22,7 @@ export async function applyDefaultsV2(r: Repo, nowDate: Date = new Date()): Prom
     if (history !== prefs.targetHistory) nextPrefs = { ...nextPrefs, targetHistory: history, updatedAt: now };
   }
   if (nextPrefs !== prefs) await r.put('preferences', nextPrefs);
-  if (plan.close.length || plan.insert.length) await r.put('templates', [...plan.close, ...plan.insert]);
-  const plans = buildDefaultPlans(now);
-  const have = new Set((await r.all('plans')).map((x) => x.id));
-  const missing = plans.filter((x) => !have.has(x.id));
-  if (missing.length) await r.put('plans', missing);
+  // The timetable is gone from the app, so this upgrade no longer creates or rewrites timetable data.
   await r.kvSet(DEFAULTS_V2_KEY, '1');
   return { timetableSkipped: plan.timetableSkipped };
 }
