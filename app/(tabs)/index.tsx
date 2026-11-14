@@ -12,6 +12,7 @@ import { useApp } from '../../src/state/store';
 import { useDayModel, useNow, useStudyDay, useToday } from '../../src/state/hooks';
 import { WEEKDAY_LONG, formatClock, formatDuration, minutesOfDay, weekdayOf } from '../../src/domain/time';
 import { formatCompact } from '../../src/domain/study';
+import { FEATURES } from '../../src/domain/features';
 
 const greeting = (h: number) => (h < 5 ? 'Still up?' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : h < 22 ? 'Good evening' : 'Good night');
 
@@ -186,7 +187,7 @@ export default function Home() {
         </Card>
       </Reveal>
 
-      {webWide ? (
+      {webWide && FEATURES.timetable ? (
         <Row align="flex-start" gap={t.spacing.xxxl}>
           <View style={{ flex: 1.45, minWidth: 0, gap: t.spacing.lg }}>{studyBlock}</View>
           <View style={{ flex: 1, minWidth: 0, gap: t.spacing.lg }}>{timetableBlock}</View>
@@ -194,7 +195,7 @@ export default function Home() {
       ) : (
         <>
           {studyBlock}
-          {timetableBlock}
+          {FEATURES.timetable ? timetableBlock : null}
         </>
       )}
 

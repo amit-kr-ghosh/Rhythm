@@ -5,6 +5,7 @@ import { useTheme } from '../../src/theme/ThemeProvider';
 import { layout } from '../../src/theme/tokens';
 import { Ambient, SharedAmbientContext } from '../../src/components/ui';
 import { TabBar } from '../../src/components/nav/TabBar';
+import { FEATURES } from '../../src/domain/features';
 
 type Progress = { current: { progress: Animated.Value } };
 /**
@@ -57,7 +58,8 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Today' }} />
-      <Tabs.Screen name="timetable" options={{ title: 'Timetable' }} />
+      {/* href: null keeps the route out of the tab bar / sidebar and out of the URL list on web. */}
+      <Tabs.Screen name="timetable" options={{ title: 'Timetable', href: FEATURES.timetable ? undefined : null }} />
       <Tabs.Screen name="focus" options={{ title: 'Focus' }} />
       <Tabs.Screen name="analytics" options={{ title: 'Analytics' }} />
       <Tabs.Screen name="settings" options={{ title: 'Settings' }} />

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Platform, Pressable, View, useWindowDimensions } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import { FEATURES } from '../../src/domain/features';
 import { Button, Card, Chip, IconButton, Row, Screen, Text, PageHeader } from '../../src/components/ui';
 import { formatDuration } from '../../src/domain/time';
 import { WeekStrip } from '../../src/components/timetable/WeekStrip';
@@ -19,7 +20,12 @@ import type { Segment } from '../../src/domain/schedule';
 type View_ = 'day' | 'week' | 'month';
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-export default function TimetableScreen() {
+/** Hidden while FEATURES.timetable is off: a typed or bookmarked /timetable URL goes to Today instead of the page. */
+export default function TimetableRoute() {
+  return FEATURES.timetable ? <TimetableScreen /> : <Redirect href="/" />;
+}
+
+function TimetableScreen() {
   const t = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams<{ date?: string }>();
