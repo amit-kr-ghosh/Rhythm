@@ -14,14 +14,14 @@ import { PulseDot, useToggleAnim } from '../motion';
 type RouteLike = { key: string; name: string };
 type BarProps = {
   state: { index: number; routes: RouteLike[] };
-  descriptors: Record<string, { options: { title?: string; tabBarAccessibilityLabel?: string; href?: string | null }; navigation?: Nav }>;
+  descriptors: Record<string, { options: { title?: string; tabBarAccessibilityLabel?: string }; navigation?: Nav }>;
   /** Not provided by every expo-router version; each descriptor carries its own `navigation` too. */
   navigation?: Nav;
 };
 type Nav = { emit: (e: { type: 'tabPress'; target: string; canPreventDefault: true }) => { defaultPrevented: boolean }; navigate: (name: string) => void };
 
 const ICONS: Record<string, [string, string]> = {
-  index: ['home-outline', 'home'], timetable: ['calendar-outline', 'calendar'], focus: ['timer-outline', 'timer'],
+  index: ['home-outline', 'home'], focus: ['timer-outline', 'timer'],
   analytics: ['stats-chart-outline', 'stats-chart'], settings: ['settings-outline', 'settings'],
 };
 
@@ -33,9 +33,6 @@ export function TabBar({ state, descriptors, navigation }: BarProps) {
   const wide = useWindowDimensions().width >= layout.sidebarBreakpoint;
   return wide ? <Sidebar state={state} descriptors={descriptors} navigation={navigation} /> : <Docked state={state} descriptors={descriptors} navigation={navigation} />;
 }
-
-/** Tabs hidden with `href: null` stay registered as routes but must not get a button. */
-const visible = (d: BarProps['descriptors'], r: RouteLike) => d[r.key]?.options.href !== null;
 
 function useGo({ descriptors, navigation }: BarProps) {
   const router = useRouter();
@@ -56,7 +53,7 @@ function useGo({ descriptors, navigation }: BarProps) {
 
 function TabItem({ name, title, focused, onPress, running, wide }: { name: string; title: string; focused: boolean; onPress: () => void; running: boolean; wide?: boolean }) {
   const t = useTheme();
-  // Five labels only fit on roomier phones; on narrow screens just the active tab shows its name (icons stay recognisable).
+  // Four labels only fit on roomier phones; on narrow screens just the active tab shows its name (icons stay recognisable).
   const roomy = useWindowDimensions().width >= 420;
   const showLabel = wide || focused || roomy;
   const v = useToggleAnim(focused, 18);
@@ -99,9 +96,9 @@ function Docked(props: BarProps) {
   return (
     <View style={{ alignSelf: 'stretch', backgroundColor: t.colors.surface, borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingTop: 6, paddingHorizontal: t.spacing.md, paddingBottom: Math.max(insets.bottom, 0) + 4, alignItems: 'center', borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, borderColor: t.colors.border }}>
       <View accessibilityRole="tablist" style={{ flexDirection: 'row', alignItems: 'center', width: '100%', maxWidth: 560, gap: 2 }}>
-        {state.routes.map((r, i) => visible(descriptors, r) ? (
+        {state.routes.map((r, i) => (
           <TabItem key={r.key} name={r.name} title={descriptors[r.key]?.options.title ?? r.name} focused={state.index === i} running={running} onPress={() => go(r, state.index === i)} />
-        ) : null)}
+        ))}
       </View>
     </View>
   );
@@ -121,9 +118,9 @@ function Sidebar(props: BarProps) {
           <Text variant="title">Rhythm</Text>
         </View>
         <View accessibilityRole="tablist" style={{ gap: t.spacing.xs }}>
-          {state.routes.map((r, i) => visible(descriptors, r) ? (
+          {state.routes.map((r, i) => (
             <TabItem key={r.key} wide name={r.name} title={descriptors[r.key]?.options.title ?? r.name} focused={state.index === i} running={running} onPress={() => go(r, state.index === i)} />
-          ) : null)}
+          ))}
         </View>
       </View>
       {Platform.OS === 'web' ? <SidebarFooter /> : null}

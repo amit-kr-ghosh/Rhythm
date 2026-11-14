@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Platform, Pressable, View, useWindowDimensions } from 'react-native';
+import { Platform, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/theme/ThemeProvider';
@@ -10,9 +10,8 @@ import { QuickAdd } from '../../src/components/home/QuickAdd';
 import { SubjectCard, SubjectSheet } from '../../src/components/study/parts';
 import { useApp } from '../../src/state/store';
 import { useDayModel, useNow, useStudyDay, useToday } from '../../src/state/hooks';
-import { WEEKDAY_LONG, formatClock, formatDuration, minutesOfDay, weekdayOf } from '../../src/domain/time';
+import { WEEKDAY_LONG, weekdayOf } from '../../src/domain/time';
 import { formatCompact } from '../../src/domain/study';
-import { FEATURES } from '../../src/domain/features';
 
 const greeting = (h: number) => (h < 5 ? 'Still up?' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : h < 22 ? 'Good evening' : 'Good night');
 
@@ -46,7 +45,7 @@ function LegendDot({ color, text }: { color: string; text: string }) {
   );
 }
 
-/** Today: the four study targets (actual vs target) and a compact timetable preview. */
+/** Today: the four study targets (actual vs target). */
 export default function Home() {
   const t = useTheme();
   const router = useRouter();
@@ -64,8 +63,6 @@ export default function Home() {
   const [openId, setOpenId] = useState<string | null>(null);
   const open = study.rows.find((r) => r.subjectId === openId) ?? null;
 
-  const nowMin = minutesOfDay(now);
-  const upcoming = day.progress.timetable.blocks.filter((b) => b.occurrence.endMin > nowMin || b.occurrence.crossesMidnight).slice(0, 5);
   const dateText = `${WEEKDAY_LONG[weekdayOf(today)]}, ${now.toLocaleDateString(undefined, { day: 'numeric', month: 'long' })}`;
   const dateShort = `${(WEEKDAY_LONG[weekdayOf(today)] as string).slice(0, 3)}, ${now.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`;
   const total = study.total;
@@ -86,33 +83,6 @@ export default function Home() {
       )}
     </>
   );
-  const timetableBlock = (
-    <>
-      <SectionHeader title="Timetable" action="Open" onAction={() => router.push('/timetable')} />
-      {upcoming.length === 0 ? (
-        <Card><EmptyState icon="calendar-outline" title={day.occurrences.length === 0 ? 'Nothing scheduled' : 'Done for today'} body={day.occurrences.length === 0 ? 'Add an activity to your timetable.' : undefined} actionLabel={day.occurrences.length === 0 ? 'Open timetable' : undefined} onAction={() => router.push('/timetable')} /></Card>
-      ) : (
-        <Card style={{ paddingVertical: t.spacing.xs, paddingHorizontal: t.spacing.md }}>
-          {upcoming.map((b, i) => {
-            const o = b.occurrence, c = o.color ?? t.colors.category[o.category], isStudy = o.category === 'study', current = b.state === 'in_progress';
-            return (
-              <Pressable key={o.key} accessibilityRole="button" accessibilityLabel={`${o.title}, ${formatClock(o.startMin)} to ${formatClock(o.endMin)}`} onPress={() => router.push(`/occurrence?key=${encodeURIComponent(o.key)}&date=${today}`)}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: t.spacing.md, minHeight: 50, borderBottomWidth: i === upcoming.length - 1 ? 0 : 1, borderBottomColor: t.colors.border }}>
-                <Text variant="caption" tone="muted" fit numberOfLines={1} style={{ width: 58 }}>{formatClock(o.startMin)}</Text>
-                <View style={{ width: 6, alignSelf: 'stretch', marginVertical: 10, borderRadius: 3, backgroundColor: c }} />
-                <View style={{ flex: 1 }}>
-                  <Text variant="bodyStrong" numberOfLines={1}>{o.title}</Text>
-                  <Text variant="caption" tone="muted">{formatDuration(o.durationMin)}{isStudy ? ` planned · ${b.linkedFocusMin > 0 ? `${formatDuration(Math.round(b.linkedFocusMin))} studied` : 'none yet'}` : ''}</Text>
-                </View>
-                {current ? <View style={{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, backgroundColor: tint(c, 0.2) }}><Text variant="caption" style={{ fontWeight: '700' }}>Now</Text></View> : null}
-              </Pressable>
-            );
-          })}
-        </Card>
-      )}
-    </>
-  );
-
   return (
     <Screen>
       <Row between gap={t.spacing.sm}>
@@ -187,19 +157,9 @@ export default function Home() {
         </Card>
       </Reveal>
 
-      {webWide && FEATURES.timetable ? (
-        <Row align="flex-start" gap={t.spacing.xxxl}>
-          <View style={{ flex: 1.45, minWidth: 0, gap: t.spacing.lg }}>{studyBlock}</View>
-          <View style={{ flex: 1, minWidth: 0, gap: t.spacing.lg }}>{timetableBlock}</View>
-        </Row>
-      ) : (
-        <>
-          {studyBlock}
-          {FEATURES.timetable ? timetableBlock : null}
-        </>
-      )}
+      {studyBlock}
 
-      <QuickAdd visible={addOpen} onClose={() => setAddOpen(false)} date={today} />
+      <QuickAdd visible={addOpen} onClose={() => setAddOpen(false)} />
       <SubjectSheet row={open} onClose={() => setOpenId(null)} onStart={start} onLog={log} />
     </Screen>
   );

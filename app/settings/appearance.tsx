@@ -29,6 +29,7 @@ export default function Appearance() {
   const t = useTheme();
   const pref = useApp((s) => s.data.prefs.theme);
   const synced = useApp((s) => s.auth !== null);
+  const weekStart = useApp((s) => s.data.prefs.weekStart);
   return (
     <SubScreen title="Appearance">
       <Card>
@@ -41,6 +42,14 @@ export default function Appearance() {
         </Pad>
       </Card>
       <Row align="stretch" gap={t.spacing.md}><Preview name="dark" /><Preview name="light" /></Row>
+      <Card>
+        <Pad>
+          <Text variant="heading">Week starts on</Text>
+          <Segmented<0 | 1 | 6> label="Week start" value={weekStart} onChange={(v) => { void updatePrefs({ weekStart: v }); }}
+            options={[{ value: 1, label: 'Monday' }, { value: 0, label: 'Sunday' }, { value: 6, label: 'Saturday' }]} />
+          <Text variant="caption" tone="muted">Used for weekly totals, analytics and weekly goals.</Text>
+        </Pad>
+      </Card>
     </SubScreen>
   );
 }

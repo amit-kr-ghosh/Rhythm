@@ -19,7 +19,6 @@ export default function SessionDetail() {
   const session = useApp((s) => s.data.sessions.find((x) => x.id === id));
   const allSubjects = useApp((s) => s.data.subjects);
   const tasks = useApp((s) => s.data.tasks);
-  const templates = useApp((s) => s.data.templates);
   const subjects = useActiveSubjects();
 
   const [note, setNote] = useState(session?.note ?? '');
@@ -33,15 +32,7 @@ export default function SessionDetail() {
   const [dirty, setDirty] = useState(false);
   useEffect(() => { if (session && !dirty) { setNote(session.note); setReflection(session.reflection); setSubjectId(session.subjectId); } }, [session, dirty]);
 
-  const linked = useMemo(() => {
-    if (!session) return { block: null as string | null, task: null as string | null };
-    let block: string | null = null;
-    if (session.occurrenceKey) {
-      const tid = session.occurrenceKey.split('@')[0];
-      block = templates.find((x) => x.id === tid)?.title ?? null;
-    }
-    return { block, task: tasks.find((x) => x.id === session.taskId)?.title ?? null };
-  }, [session, templates, tasks]);
+  const linked = useMemo(() => ({ task: session ? tasks.find((x) => x.id === session.taskId)?.title ?? null : null }), [session, tasks]);
 
   if (!session) return <Screen><EmptyState icon="alert-circle-outline" title="Session not found" body="It may have been deleted." actionLabel="Go back" onAction={() => safeBack(router)} /></Screen>;
 
@@ -91,7 +82,6 @@ export default function SessionDetail() {
         {row('Mode', modeLabel(session.mode))}
         {row('Status', sessionStatusLabel(session))}
         {row('Source', manual ? 'Manual entry' : 'Timer')}
-        {linked.block ? row('Timetable block', linked.block) : null}
         {linked.task ? row('Task', linked.task) : null}
       </Card>
 

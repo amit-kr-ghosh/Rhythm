@@ -37,8 +37,8 @@ export const CHANNELS: Record<
   }
 > = {
   activities: {
-    name: 'Timetable',
-    description: 'Upcoming activities from your timetable',
+    name: 'Activities',
+    description: 'Activity reminders',
     importance: 'DEFAULT',
   },
   study: {

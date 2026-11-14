@@ -15,15 +15,12 @@ import { useTheme } from '../../src/theme/ThemeProvider';
 import { validateQuietHours } from '../../src/domain/validation';
 import type { NotificationSettings } from '../../src/domain/types';
 
-type Flag = 'activities' | 'study' | 'tasks' | 'goals' | 'breaks' | 'habits' | 'summary';
+type Flag = 'tasks' | 'goals' | 'breaks' | 'habits';
 const FLAGS: { key: Flag; label: string; hint: string }[] = [
-  { key: 'activities', label: 'Timetable activities', hint: 'Before blocks that have a reminder set.' },
-  { key: 'study', label: 'Study sessions', hint: 'Before study blocks on your timetable.' },
   { key: 'tasks', label: 'Task deadlines', hint: 'For tasks with a reminder.' },
   { key: 'goals', label: 'Daily & weekly goals', hint: 'An evening check-in on your targets.' },
   { key: 'breaks', label: 'Breaks & focus complete', hint: 'While a focus timer is running.' },
   { key: 'habits', label: 'Habit reminders', hint: 'At the time you set for each habit.' },
-  { key: 'summary', label: 'Daily summary', hint: 'A nudge to review planned vs. actual.' },
 ];
 
 export default function NotificationSettings() {
@@ -105,11 +102,9 @@ export default function NotificationSettings() {
           <Card><Pad>
             <Text variant="heading">What to remind me about</Text>
             {FLAGS.map((f) => <SwitchRow key={f.key} label={f.label} hint={f.hint} value={n[f.key]} onChange={(v) => set({ [f.key]: v } as Partial<NotificationSettings>)} />)}
-            {n.summary ? <TimeField label="Summary time" value={n.summaryMin} onChange={(v) => set({ summaryMin: v })} /> : null}
           </Pad></Card>
           <Card><Pad>
             <Text variant="heading">Lead times</Text>
-            <DurationStepper label="Before activities & study" value={n.activityLeadMin} min={0} max={120} step={5} onChange={(v) => set({ activityLeadMin: v })} />
             <DurationStepper label="Before task deadlines" value={n.taskLeadMin} min={0} max={1440} step={15} onChange={(v) => set({ taskLeadMin: v })} />
           </Pad></Card>
           <Card><Pad>

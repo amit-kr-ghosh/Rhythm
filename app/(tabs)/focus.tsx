@@ -3,14 +3,13 @@ import { AppState, Platform, Pressable, View, useWindowDimensions } from 'react-
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Banner, Button, Card, EmptyState, IconButton, ProgressRing, Row, Screen, SectionHeader, Text, PageHeader } from '../../src/components/ui';
 import { DurationStepper, Field, Segmented, Select } from '../../src/components/inputs';
-import { formatClock } from '../../src/domain/time';
 import { confirm } from '../../src/components/feedback';
 import { formatCompact, selectableSubjects } from '../../src/domain/study';
 import { PulseDot, Reveal } from '../../src/components/motion';
 import { SessionRow } from '../../src/components/focus/SessionRow';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useApp } from '../../src/state/store';
-import { useStudyDay, useDayModel, useNow, useToday } from '../../src/state/hooks';
+import { useStudyDay, useNow, useToday } from '../../src/state/hooks';
 import { cancelFocus, enableNotifications, finishFocus, pauseFocus, resumeFocus, setTimerNote, startFocus, touchTimer } from '../../src/state/actions';
 import { unlockAudio } from '../../src/services/alerts';
 import { nextTimerEvent } from '../../src/domain/alerts';
@@ -54,31 +53,28 @@ export default function FocusScreen() {
 function SetupTimer() {
   const t = useTheme();
   const router = useRouter();
-  const params = useLocalSearchParams() as { occurrenceKey?: string; subjectId?: string; taskId?: string };
+  const params = useLocalSearchParams() as { subjectId?: string; taskId?: string };
   const prefs = useApp((s) => s.data.prefs);
   const allSubjectsRaw = useApp((s) => s.data.subjects);
   const subjects = useMemo(() => selectableSubjects(allSubjectsRaw), [allSubjectsRaw]);
   const today = useToday();
-  const day = useDayModel(today);
   const studyToday = useStudyDay(today);
 
   const [mode, setMode] = useState<SessionMode>(selectableMode(prefs.timer.mode));
   const [focusMin, setFocusMin] = useState(prefs.timer.focusMin);
   const [breakMin, setBreakMin] = useState(Math.max(1, prefs.timer.breakMin));
-  // Default to the subject of the block that is happening now, else the first tracked subject (set up front, so the dropdown never flashes "Select").
-  const [subjectId, setSubjectId] = useState<string | null>(() => params.subjectId ?? (day.current?.subjectId && subjects.some((x) => x.id === day.current?.subjectId) ? day.current.subjectId : subjects[0]?.id ?? null));
+  // Default to the subject passed in (e.g. from a subject card), else the first tracked subject (set up front, so the dropdown never flashes "Select").
+  const [subjectId, setSubjectId] = useState<string | null>(() => params.subjectId ?? subjects[0]?.id ?? null);
   // Subjects can load after the first render (or the chosen one can be archived): fall back to a valid one.
   React.useEffect(() => {
     if (subjects.length === 0) return;
     if (subjectId !== null && subjects.some((x) => x.id === subjectId)) return;
-    setSubjectId(day.current?.subjectId && subjects.some((x) => x.id === day.current?.subjectId) ? day.current.subjectId : subjects[0]!.id);
-  }, [subjectId, subjects, day.current]);
-  const [occurrenceKey, setOccurrenceKey] = useState<string | null>(params.occurrenceKey ?? null);
+    setSubjectId(subjects[0]!.id);
+  }, [subjectId, subjects]);
   const taskId: string | null = params.taskId ?? null;
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const studyBlocks = useMemo(() => day.occurrences.filter((o) => o.category === 'study'), [day.occurrences]);
   const todaySessions = useApp((s) => s.data.sessions);
   const todays = useMemo(() => sessionsOn(todaySessions, today).sort((a, b) => b.startedAt.localeCompare(a.startedAt)), [todaySessions, today]);
   const subjectById = useMemo(() => new Map(subjects.map((s) => [s.id, s])), [subjects]);
@@ -89,10 +85,10 @@ function SetupTimer() {
     unlockAudio(); // the tap that starts the timer is the user gesture browsers need before they will play its end-of-session sound
     if (!subjectId) { setError('Pick a subject first.'); return; }
     setBusy(true); setError(null);
-    const res = await startFocus({ mode, focusMin, breakMin, subjectId, occurrenceKey, taskId });
+    const res = await startFocus({ mode, focusMin, breakMin, subjectId, occurrenceKey: null, taskId });
     setBusy(false);
     if (!res.ok) setError(Object.values(res.errors)[0] ?? 'Could not start the timer.');
-  }, [busy, mode, focusMin, breakMin, subjectId, occurrenceKey, taskId]);
+  }, [busy, mode, focusMin, breakMin, subjectId, taskId]);
 
   const winW = useWindowDimensions().width;
   const bump = (d: number) => setFocusMin(Math.max(1, Math.min(240, focusMin + d)));
@@ -135,14 +131,6 @@ function SetupTimer() {
             options={subjects.map((x) => { const r = studyToday.rows.find((y) => y.subjectId === x.id); return { value: x.id, label: x.name, color: x.color, hint: r ? `Today ${formatCompact(r.actualSec)} of ${formatCompact(r.targetSec)}` : undefined }; })} />
         )}
         {(() => { const r = studyToday.rows.find((x) => x.subjectId === subjectId); return r ? <Text variant="caption" tone="muted">Today: {formatCompact(r.actualSec)} of {formatCompact(r.targetSec)}{r.remainingSec > 0 ? ` · ${formatCompact(r.remainingSec)} left` : ' · target reached'}</Text> : null; })()}
-        {studyBlocks.length > 0 ? (
-          <View style={{ gap: t.spacing.sm }}>
-            <Select<string | null> label="Timetable block (optional)" sheetTitle="Link to a timetable block" value={occurrenceKey} placeholder="None"
-              onChange={(v) => { setOccurrenceKey(v); const o = studyBlocks.find((x) => x.key === v); if (o?.subjectId) setSubjectId(o.subjectId); }}
-              options={[{ value: null, label: 'None' }, ...studyBlocks.map((o) => ({ value: o.key as string | null, label: o.title, color: o.color ?? undefined, hint: `${formatClock(o.startMin)} – ${formatClock(o.endMin)}` }))]} />
-            <Text variant="caption" tone="muted">Time always counts toward the subject, even outside its block.</Text>
-          </View>
-        ) : null}
       </Card>
 
       {mode === 'pomodoro' ? <AlertHint running={false} /> : null}

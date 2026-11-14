@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useApp } from '../../src/state/store';
 import { Button, Card, EmptyState, IconButton, ProgressBar, Row, Screen, SectionHeader, Text } from '../../src/components/ui';
@@ -55,6 +55,13 @@ export default function SubjectsScreen() {
     setIcon(cur ? subjectIcon(cur) : defaultSubjectIcon(''));
     setDaily(cur?.dailyTargetMin ?? null); setWeekly(cur?.weeklyTargetMin ?? null); setNotes(cur?.notes ?? '');
   };
+  // The Today "+" menu links here with ?new=1: open the new-subject form once, straight away.
+  const { new: openNew } = useLocalSearchParams<{ new?: string }>();
+  const openedFromLink = useRef(false);
+  useEffect(() => {
+    if (openNew === '1' && !openedFromLink.current) { openedFromLink.current = true; open('new'); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openNew]);
   const save = async () => {
     const res = await saveSubject({ id: editing && editing !== 'new' ? editing.id : undefined, name, color, icon, dailyTargetMin: daily, weeklyTargetMin: weekly, notes });
     if (res.ok) setEditing(null); else setErrors(res.errors);
@@ -70,7 +77,7 @@ export default function SubjectsScreen() {
     const u = subjectUsage(s.id);
     const lines: string[] = [];
     if (u.sessions) lines.push(`${u.sessions} recorded session${u.sessions === 1 ? ' is' : 's are'} kept in your history as “Unassigned”.`);
-    const unlinked = [u.tasks && `${u.tasks} task${u.tasks === 1 ? '' : 's'}`, u.goals && `${u.goals} goal${u.goals === 1 ? '' : 's'}`, u.activities && `${u.activities} timetable block${u.activities === 1 ? '' : 's'}`].filter(Boolean);
+    const unlinked = [u.tasks && `${u.tasks} task${u.tasks === 1 ? '' : 's'}`, u.goals && `${u.goals} goal${u.goals === 1 ? '' : 's'}`, u.activities && `${u.activities} scheduled activit${u.activities === 1 ? 'y' : 'ies'}`].filter(Boolean);
     if (unlinked.length) lines.push(`${unlinked.join(', ')} will be unlinked from it.`);
     lines.push('This deletes the subject on all your devices. To just hide it, archive it instead.');
     const ok = await confirm({ title: `Delete ${s.name}?`, message: lines.join('\n\n'), confirmLabel: 'Delete', destructive: true });

@@ -37,7 +37,7 @@ export default function DeleteData() {
       <Card tone="sunken" style={{ gap: t.spacing.sm }}>
         <Text variant="heading">What will happen</Text>
         <Text tone="muted">• This device is reset: all sessions, tasks, goals, habits, notes and progress history are permanently removed.</Text>
-        <Text tone="muted">• The default subjects and timetable are restored so the app stays usable.</Text>
+        <Text tone="muted">• The default subjects are restored so the app stays usable.</Text>
         <Text tone="muted">• {user ? 'If you choose below, your cloud copy is deleted too, so it cannot be restored on another device.' : 'You are not signed in, so only this device is affected.'}</Text>
         <Text tone="muted">• Your sign-in account itself is not deleted. To remove it, contact the project owner or delete it from the Supabase dashboard.</Text>
         <Text tone="muted">• Consider exporting first (Settings → Export).</Text>

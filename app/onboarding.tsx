@@ -53,10 +53,10 @@ export default function Onboarding() {
         <>
           <View style={{ marginTop: t.spacing.lg }}><BrandMark size={72} /></View>
           <Text variant="hero">Find your rhythm</Text>
-          <Text variant="heading" tone="muted">Plan your day. Focus. See real progress.</Text>
+          <Text variant="heading" tone="muted">Pick your subjects. Focus. See real progress.</Text>
           <Card style={{ gap: t.spacing.lg }}>
             {[
-              { icon: 'calendar-outline', title: 'A plan that’s ready', body: 'Your weekly timetable is preloaded and fully editable.' },
+              { icon: 'library-outline', title: 'Your subjects, ready', body: 'DSA, AI/ML, RBI and Communication are set up with daily targets you can change.' },
               { icon: 'shield-checkmark-outline', title: 'Honest numbers', body: 'Every percentage comes from time you actually recorded.' },
               { icon: 'cloud-offline-outline', title: 'Works offline', body: 'Sign in later, only if you want backup and sync.' },
             ].map((x) => (
@@ -90,7 +90,7 @@ export default function Onboarding() {
           <Field label="My reason" value={why} onChangeText={setWhy} multiline placeholder="e.g. To clear RBI Grade B and build a strong foundation in AI/ML" />
           <Card style={{ gap: t.spacing.sm }}>
             <CardTitle icon="notifications-outline" title="Reminders (optional)" />
-            <Text tone="muted">Rhythm can remind you before timetable blocks, task deadlines and goal check-ins. Reminders are sent from this device — nothing leaves it. You can say no and still use everything.</Text>
+            <Text tone="muted">Rhythm can remind you about task deadlines and goal check-ins. Reminders are sent from this device — nothing leaves it. You can say no and still use everything.</Text>
             <Button label="Turn on reminders" variant="secondary" icon="notifications-outline" onPress={() => void askNotifications()} />
             {notifNote ? <Text variant="caption" tone="muted">{notifNote}</Text> : null}
           </Card>

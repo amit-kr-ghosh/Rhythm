@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useApp } from '../../src/state/store';
-import { useToday, useDayModel } from '../../src/state/hooks';
+import { useToday } from '../../src/state/hooks';
 import { Banner, Button, Chip, Row, Screen, Text } from '../../src/components/ui';
 import { Field, NumberField, Segmented, WeekdayPicker, TimeField, SwitchRow } from '../../src/components/inputs';
 import { ModalHeader } from '../../src/components/tasks/ModalHeader';
@@ -24,7 +24,6 @@ export default function TaskEditor() {
   const prefs = useApp((s) => s.data.prefs);
   const goals = useApp((s) => s.data.goals);
   const existing = useApp((s) => s.data.tasks.find((x) => x.id === id));
-  const day = useDayModel(today, 60_000);
   const isNew = id === 'new' || !existing;
 
   const [title, setTitle] = useState(existing?.title ?? '');
@@ -38,7 +37,7 @@ export default function TaskEditor() {
   const [lead, setLead] = useState<number | null>(existing?.reminderLeadMin ?? null);
   const [recKind, setRecKind] = useState<'none' | 'daily' | 'weekly'>(existing?.recurrence?.freq ?? 'none');
   const [recDays, setRecDays] = useState<number[]>(existing?.recurrence?.weekdays ?? [1, 2, 3, 4, 5]);
-  const [occurrenceKey, setOccurrenceKey] = useState<string | null>(existing?.occurrenceKey ?? null);
+  const occurrenceKey = existing?.occurrenceKey ?? null; // legacy link to a timetable block: kept as is, no longer editable
   const [goalId, setGoalId] = useState<string | null>(existing?.goalId ?? null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -73,11 +72,6 @@ export default function TaskEditor() {
       <Text variant="label" tone="muted">Repeat</Text>
       <Segmented label="Repeat" value={recKind} onChange={setRecKind} options={[{ value: 'none', label: 'Never' }, { value: 'daily', label: 'Daily' }, { value: 'weekly', label: 'Weekly' }]} />
       {recKind === 'weekly' ? <WeekdayPicker value={recDays} onChange={setRecDays} weekStart={prefs.weekStart} /> : null}
-      <Text variant="label" tone="muted">Link to today's timetable block</Text>
-      <Row gap={t.spacing.sm} wrap>
-        <Chip label="None" selected={occurrenceKey === null} onPress={() => setOccurrenceKey(null)} />
-        {day.occurrences.filter((o) => o.category === 'study').map((o) => <Chip key={o.key} label={`${o.title} ${formatClock(o.startMin)}`} selected={occurrenceKey === o.key} onPress={() => setOccurrenceKey(o.key)} />)}
-      </Row>
       {goals.filter((g) => !g.archived).length ? (
         <>
           <Text variant="label" tone="muted">Goal</Text>

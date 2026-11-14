@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useApp } from '../../src/state/store';
-import { Button, Chip, Row, Screen, Text } from '../../src/components/ui';
+import { Button, Screen, Text } from '../../src/components/ui';
 import { ColorPicker, Field, SwitchRow, TimeField, WeekdayPicker } from '../../src/components/inputs';
 import { ModalHeader } from '../../src/components/tasks/ModalHeader';
 import { confirm } from '../../src/components/feedback';
 import { archiveHabit, deleteHabit, saveHabit } from '../../src/state/actions';
-import { CATEGORIES, type Category } from '../../src/domain/types';
-import { CATEGORY_LABEL } from '../../src/state/extra-timetable';
+import type { Category } from '../../src/domain/types';
 import { PICKER_COLORS } from '../../src/domain/colors';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { safeBack } from '../../src/navigation/safeBack';
@@ -24,7 +23,7 @@ export default function HabitEditor() {
   const [weekdays, setWeekdays] = useState<number[]>(existing?.weekdays ?? [0, 1, 2, 3, 4, 5, 6]);
   const [remind, setRemind] = useState(existing?.reminderMin != null);
   const [reminderMin, setReminderMin] = useState(existing?.reminderMin ?? 7 * 60);
-  const [linked, setLinked] = useState<Category | null>(existing?.linkedCategory ?? null);
+  const linked: Category | null = existing?.linkedCategory ?? null; // legacy field, kept as is
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const save = async () => {
@@ -46,11 +45,6 @@ export default function HabitEditor() {
       <WeekdayPicker value={weekdays} onChange={setWeekdays} weekStart={prefs.weekStart} error={errors.weekdays} />
       <SwitchRow label="Daily reminder" value={remind} onChange={setRemind} hint="Only sent if reminders are enabled in Settings." />
       {remind ? <TimeField label="Remind at" value={reminderMin} onChange={setReminderMin} /> : null}
-      <Text variant="label" tone="muted">Related timetable category (optional)</Text>
-      <Row gap={t.spacing.sm} wrap>
-        <Chip label="None" selected={linked === null} onPress={() => setLinked(null)} />
-        {CATEGORIES.map((c) => <Chip key={c} label={CATEGORY_LABEL[c] ?? c} selected={linked === c} onPress={() => setLinked(c)} />)}
-      </Row>
       {!isNew ? (
         <>
           <Button label={existing!.archived ? 'Restore habit' : 'Archive habit'} variant="secondary" onPress={() => { void archiveHabit(existing!.id, !existing!.archived); safeBack(router); }} />

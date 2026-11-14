@@ -5,7 +5,6 @@ import { useTheme } from '../../src/theme/ThemeProvider';
 import { layout } from '../../src/theme/tokens';
 import { Ambient, SharedAmbientContext } from '../../src/components/ui';
 import { TabBar } from '../../src/components/nav/TabBar';
-import { FEATURES } from '../../src/domain/features';
 
 type Progress = { current: { progress: Animated.Value } };
 /**
@@ -30,12 +29,12 @@ const webScene = {
   animationFillMode: 'both',
 } as never;
 
-/** Five tabs, ordered by how often they are used: Today → Timetable → Focus → Analytics → Settings. */
+/** Four tabs, ordered by how often they are used: Today → Focus → Analytics → Settings. */
 export default function TabsLayout() {
   const t = useTheme();
   const wide = useWindowDimensions().width >= layout.sidebarBreakpoint;
   return (
-    // One gradient behind all five tabs (instead of one per screen) and transparent scenes: switching tabs is just a swap of content.
+    // One gradient behind all four tabs (instead of one per screen) and transparent scenes: switching tabs is just a swap of content.
     <View style={{ flex: 1, backgroundColor: t.colors.bg }}>
     <Ambient />
     <SharedAmbientContext.Provider value>
@@ -51,15 +50,13 @@ export default function TabsLayout() {
         transitionSpec: { animation: 'timing', config: { duration: 280, easing: Easing.inOut(Easing.cubic) } },
         sceneStyleInterpolator: slide,
         freezeOnBlur: true, // hidden tabs stop re-rendering (timer ticks, store updates)
-        // Phones: mount all five tabs up front (behind the "Starting Rhythm" overlay) so the first visit to a tab is instant
+        // Phones: mount all four tabs up front (behind the "Starting Rhythm" overlay) so the first visit to a tab is instant
         // instead of building the screen while you wait. Web keeps lazy mounting (its tabs are cheap and its load time matters).
         lazy: Platform.OS === 'web',
         sceneStyle: Platform.OS === 'web' ? webScene : { backgroundColor: 'transparent' },
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Today' }} />
-      {/* href: null keeps the route out of the tab bar / sidebar and out of the URL list on web. */}
-      <Tabs.Screen name="timetable" options={{ title: 'Timetable', href: FEATURES.timetable ? undefined : null }} />
       <Tabs.Screen name="focus" options={{ title: 'Focus' }} />
       <Tabs.Screen name="analytics" options={{ title: 'Analytics' }} />
       <Tabs.Screen name="settings" options={{ title: 'Settings' }} />

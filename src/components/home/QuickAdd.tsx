@@ -7,14 +7,14 @@ import { Sheet } from '../feedback';
 import { IconBadge, Text, focusRing, type IconName } from '../ui';
 import { useApp } from '../../state/store';
 
-/** The "+" sheet: the four things people actually add, one tap each. */
-export function QuickAdd({ visible, onClose, date }: { visible: boolean; onClose: () => void; date: string }) {
+/** The "+" sheet: the things people actually add, one tap each. */
+export function QuickAdd({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const t = useTheme();
   const router = useRouter();
   const timer = useApp((s) => s.timer);
   const items: { icon: IconName; title: string; hint: string; color: string; go: () => void }[] = [
     { icon: timer ? 'timer' : 'play-circle', title: timer ? 'Open timer' : 'Start focus', hint: timer ? 'A session is running' : 'Time a study session', color: t.colors.accent, go: () => router.push('/focus' as never) },
-    { icon: 'calendar', title: 'Timetable block', hint: 'Add an activity', color: t.colors.warning, go: () => router.push({ pathname: '/activity/[id]', params: { id: 'new', date } } as never) },
+    { icon: 'add-circle', title: 'Add subject', hint: 'DSA, AI/ML, or anything you study', color: t.colors.warning, go: () => router.push({ pathname: '/subjects', params: { new: '1' } } as never) },
     { icon: 'create', title: 'Log study time', hint: 'Time you already studied', color: t.colors.series[3] as string, go: () => router.push('/manual-session' as never) },
   ];
   return (

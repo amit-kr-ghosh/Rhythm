@@ -237,7 +237,6 @@ export async function boot(): Promise<void> {
     store.set({ notifPermission: await getPermission(), ready: true });
     scheduleReplan(300);
     void startAlertWatcher();
-    if (upgrade.timetableSkipped) showToast('info', 'Your custom timetable was kept. The new default is in Timetable → ⋯ → Restore default.');
 
     NetInfo.addEventListener((n) => { if (n.isConnected && store.get().auth) scheduleSync(500); });
     RNAppState.addEventListener('change', (st) => {

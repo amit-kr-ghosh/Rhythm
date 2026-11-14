@@ -11,7 +11,7 @@ export default function About() {
     <SubScreen title="About">
       <Card style={{ gap: t.spacing.sm }}>
         <Text variant="heading">Rhythm {version}</Text>
-        <Text tone="muted">A personal timetable, focus timer and study tracker. Every number you see is calculated from what you recorded.</Text>
+        <Text tone="muted">A personal focus timer and study tracker. Every number you see is calculated from what you recorded.</Text>
       </Card>
       <Card style={{ gap: t.spacing.sm }}>
         <Text variant="heading">Privacy</Text>
@@ -20,7 +20,6 @@ export default function About() {
       <Card style={{ gap: t.spacing.sm }}>
         <Text variant="heading">Known limitations</Text>
         <Text tone="muted">• Reminders are local notifications; Android may delay them under aggressive battery saving.</Text>
-        <Text tone="muted">• Timetable blocks are moved with steppers and time fields rather than drag-and-drop.</Text>
         <Text tone="muted">• Conflicting edits on two devices resolve by newest edit; the older version is kept in the sync conflict history.</Text>
       </Card>
     </SubScreen>

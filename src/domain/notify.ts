@@ -1,5 +1,4 @@
 import { addDays, dateRange, instantAt, toDateKey, weekdayOf } from './time';
-import { resolveDay } from './schedule';
 import { habitScheduledOn, taskDueOn } from './progress';
 import type {
   ActivityTemplate, DateKey, Habit, HabitRecord, Minutes, NotificationSettings, Preferences, ScheduleException, Subject, Task,
@@ -56,26 +55,8 @@ export function planNotifications(i: PlanInput): PlannedNotification[] {
     if (at === null || at <= i.now) return;
     out.push({ ...n, at });
   };
-  const subjectName = (id: string | null) => i.subjects.find((x) => x.id === id)?.name;
 
   for (const date of days) {
-    // Timetable + study reminders (opt-in per block, or all study blocks when "study" reminders are on)
-    for (const o of resolveDay(date, i.templates, i.exceptions)) {
-      const isStudy = o.category === 'study';
-      let lead: number | null = o.reminderLeadMin;
-      let channel: Channel = 'activities';
-      if (lead === null && isStudy && s.study) { lead = s.activityLeadMin; channel = 'study'; }
-      else if (lead !== null && isStudy) channel = 'study';
-      else if (lead !== null && !s.activities) lead = null;
-      if (lead === null) continue;
-      const startAt = instantAt(date, o.startMin).getTime();
-      push({
-        id: `act:${o.key}`, channel, at: startAt - lead * 60_000,
-        title: isStudy ? `Study: ${subjectName(o.subjectId) ?? o.title}` : o.title,
-        body: lead === 0 ? 'Starting now.' : `Starts in ${lead} min.`, data: { type: 'occurrence', key: o.key, date },
-      });
-    }
-
     if (s.tasks) {
       for (const t of i.tasks) {
         if (t.reminderLeadMin === null || t.status === 'done' || !taskDueOn(t, date)) continue;
@@ -99,8 +80,6 @@ export function planNotifications(i: PlanInput): PlannedNotification[] {
         push({ id: `goal:weekly:${date}`, channel: 'goals', at: instantAt(date, 18 * 60 + 30).getTime(), title: 'Last day of the week', body: 'Check your weekly study goal.', data: { type: 'goals' } });
       }
     }
-
-    if (s.summary) push({ id: `summary:${date}`, channel: 'summary', at: instantAt(date, s.summaryMin).getTime(), title: 'Daily summary', body: 'Review what you planned vs. what you did today.', data: { type: 'summary' } });
 
     if (i.prefs.motivation.dailyReminder) {
       push({ id: `motivation:${date}`, channel: 'motivation', at: instantAt(date, i.prefs.motivation.reminderMin).getTime(), title: 'Today’s quote', body: 'Open Rhythm for your quote of the day.', data: { type: 'quote' } });

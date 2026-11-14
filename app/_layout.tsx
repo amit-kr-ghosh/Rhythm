@@ -66,9 +66,7 @@ function Gate() {
       <Stack screenLayout={({ children, options }) => <WebModalFrame isModal={options.presentation === 'transparentModal'}>{children}</WebModalFrame>} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: t.colors.bg }, animation: t.reduceMotion ? 'none' : 'default', freezeOnBlur: Platform.OS !== 'web' }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
-        <Stack.Screen name="activity/[id]" options={MODAL} />
         <Stack.Screen name="manual-session" options={MODAL} />
-        <Stack.Screen name="occurrence" options={MODAL} />
         <Stack.Screen name="task/[id]" options={MODAL} />
         <Stack.Screen name="goal/[id]" options={MODAL} />
         <Stack.Screen name="habit/[id]" options={MODAL} />

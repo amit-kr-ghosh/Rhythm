@@ -8,7 +8,6 @@ import { resolveDay } from '../src/domain/schedule';
 import { QUOTES, TOPICS, quoteOfDay, quoteById, encouragement } from '../src/domain/quotes';
 import { instantAt } from '../src/domain/time';
 import { habit, habitRecord, notifSettings, prefs, subjects, task, templates, NOW_ISO } from './factories';
-import type { ScheduleException } from '../src/domain/types';
 
 const settings = (over = {}) => ({ ...notifSettings(), quietEnabled: true, quietStartMin: 23 * 60, quietEndMin: 6 * 60, ...over });
 const input = (over = {}) => ({
@@ -37,35 +36,20 @@ test('quiet hours: time-critical channels are dropped, others are deferred to th
 test('notifications: nothing is planned while reminders are disabled', () => {
   assert.deepEqual(planNotifications(input({ settings: settings({ enabled: false }) }) as never), []);
 });
-test('notifications: study blocks get a reminder `lead` minutes before start, with stable ids and none in the past', () => {
-  const plan = planNotifications(input() as never);
-  const dsa = plan.find((n) => n.id.startsWith('act:') && n.title === 'Study: DSA');
-  assert.ok(dsa, 'a DSA study reminder exists');
-  assert.equal(dsa!.at, instantAt('2026-10-28', 7 * 60 - 5).getTime(), '7:00 block, 5 min lead');
+test('notifications: timetable blocks no longer produce reminders, even with study/activity reminders on', () => {
+  const plan = planNotifications(input({ settings: settings({ study: true, activities: true }) }) as never);
+  assert.equal(plan.some((n) => n.id.startsWith('act:')), false, 'no timetable block reminders');
+  const opted = templates('2026-01-01').map((t) => (t.title === 'Dinner' ? { ...t, reminderLeadMin: 10 } : t));
+  assert.equal(planNotifications(input({ templates: opted }) as never).some((n) => n.title === 'Dinner'), false, 'a block-level reminder is ignored too');
+});
+test('notifications: plans are deterministic, have unique ids, none in the past, and stay under the cap', () => {
+  const tk = task({ title: 'Submit form', dueDate: '2026-10-28', dueMin: 17 * 60, reminderLeadMin: 60 });
+  const plan = planNotifications(input({ tasks: [tk] }) as never);
+  assert.ok(plan.length > 0);
   assert.ok(plan.every((n) => n.at > instantAt('2026-10-28', 6 * 60).getTime()));
   assert.equal(new Set(plan.map((n) => n.id)).size, plan.length, 'ids are unique');
-  assert.deepEqual(plan.map((n) => n.id), planNotifications(input() as never).map((n) => n.id), 'deterministic');
+  assert.deepEqual(plan.map((n) => n.id), planNotifications(input({ tasks: [tk] }) as never).map((n) => n.id), 'deterministic');
   assert.ok(plan.length <= MAX_SCHEDULED);
-});
-test('notifications: non-study blocks only notify when the block opts in', () => {
-  const base = templates('2026-01-01');
-  assert.equal(planNotifications(input({ templates: base }) as never).some((n) => n.title === 'Exercise'), false);
-  const opted = base.map((t) => (t.title === 'Dinner' ? { ...t, reminderLeadMin: 10 } : t));
-  const n = planNotifications(input({ templates: opted }) as never).find((x) => x.title === 'Dinner');
-  assert.ok(n); assert.equal(n!.at, instantAt('2026-10-28', 20 * 60 + 30 - 10).getTime());
-});
-test('notifications: rescheduling — skipping an occurrence removes its reminder, a moved block moves it', () => {
-  const t = templates('2026-01-01');
-  const dsa = t.find((x) => x.title === 'DSA' && x.startMin === 7 * 60 && x.weekdays.includes(3 /* Wed */ ) === false)!;
-  const skip: ScheduleException = { id: 'e1', date: '2026-10-28', type: 'skip', templateId: dsa.id, title: null, category: null, subjectId: null, color: null, startMin: null, endMin: null, createdAt: NOW_ISO, updatedAt: NOW_ISO, deletedAt: null };
-  // 2026-10-28 is a Wednesday (college day) so use a Tuesday template day instead.
-  const tue = '2026-10-27';
-  const base = planNotifications(input({ now: instantAt(tue, 6 * 60).getTime(), today: tue }) as never).filter((n) => n.id.includes(`@${tue}`));
-  const skipped = planNotifications(input({ now: instantAt(tue, 6 * 60).getTime(), today: tue, exceptions: [{ ...skip, date: tue }] }) as never).filter((n) => n.id.includes(`@${tue}`));
-  assert.equal(skipped.length, base.length - 1);
-  const moved: ScheduleException = { ...skip, id: 'e2', date: tue, type: 'override', startMin: 8 * 60, endMin: 9 * 60 };
-  const mv = planNotifications(input({ now: instantAt(tue, 6 * 60).getTime(), today: tue, exceptions: [moved] }) as never).find((n) => n.id === `act:${dsa.id}@${tue}`);
-  assert.equal(mv!.at, instantAt(tue, 8 * 60 - 5).getTime());
 });
 test('notifications: task and habit reminders respect completion and due dates', () => {
   const tk = task({ title: 'Submit form', dueDate: '2026-10-28', dueMin: 17 * 60, reminderLeadMin: 60 });

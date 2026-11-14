@@ -25,7 +25,7 @@ export function AuthShell({ title, subtitle, children, requireCloud = true }: { 
         <Card style={{ gap: t.spacing.md }}>
           <Text variant="heading">Cloud sync isn’t set up in this build</Text>
           <Text tone="muted">
-            Rhythm works fully offline — your timetable, sessions and progress are saved on this device. To enable accounts and sync, set the Supabase
+            Rhythm works fully offline — your subjects, sessions and progress are saved on this device. To enable accounts and sync, set the Supabase
             URL and anon key in your environment (see the README) and rebuild.
           </Text>
           <Button label="Continue without an account" variant="secondary" onPress={() => safeBack(router)} />
