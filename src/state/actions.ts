@@ -113,7 +113,7 @@ export async function completeOnboarding(whys: string[]): Promise<void> {
 
 /* ======================= Subjects ======================= */
 
-export type SubjectInput = { id?: string; name: string; color: string; dailyTargetMin: number | null; weeklyTargetMin: number | null; notes?: string };
+export type SubjectInput = { id?: string; name: string; color: string; dailyTargetMin: number | null; weeklyTargetMin: number | null; notes?: string; icon?: string | null };
 
 export async function saveSubject(i: SubjectInput): Promise<Result<Subject>> {
   const others = D().subjects.filter((s) => s.id !== i.id).map((s) => s.name);
@@ -122,8 +122,8 @@ export async function saveSubject(i: SubjectInput): Promise<Result<Subject>> {
   const existing = i.id ? D().subjects.find((s) => s.id === i.id) : undefined;
   const t = nowIso();
   const subject: Subject = existing
-    ? { ...existing, name: i.name.trim(), color: i.color, dailyTargetMin: i.dailyTargetMin, weeklyTargetMin: i.weeklyTargetMin, notes: i.notes ?? existing.notes, updatedAt: t }
-    : { ...stamp(), name: i.name.trim(), color: i.color, archived: false, sortOrder: D().subjects.reduce((m, s) => Math.max(m, s.sortOrder), -1) + 1, dailyTargetMin: i.dailyTargetMin, weeklyTargetMin: i.weeklyTargetMin, notes: i.notes ?? '', isDefault: false };
+    ? { ...existing, name: i.name.trim(), color: i.color, dailyTargetMin: i.dailyTargetMin, weeklyTargetMin: i.weeklyTargetMin, notes: i.notes ?? existing.notes, icon: i.icon === undefined ? existing.icon ?? null : i.icon, updatedAt: t }
+    : { ...stamp(), name: i.name.trim(), color: i.color, archived: false, sortOrder: D().subjects.reduce((m, s) => Math.max(m, s.sortOrder), -1) + 1, dailyTargetMin: i.dailyTargetMin, weeklyTargetMin: i.weeklyTargetMin, notes: i.notes ?? '', isDefault: false, icon: i.icon ?? null };
   await save('subjects', subject);
   await recordTargetHistory();
   return { ok: true, value: subject };

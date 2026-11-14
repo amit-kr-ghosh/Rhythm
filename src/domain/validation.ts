@@ -1,6 +1,7 @@
 import { MIN_PER_DAY } from './time';
 import type { Category, Priority } from './types';
 import { CATEGORIES } from './types';
+import { isSubjectIcon } from './subjectIcons';
 
 export type Errors<K extends string = string> = Partial<Record<K, string>>;
 export type Validation<K extends string = string> = { ok: boolean; errors: Errors<K> };
@@ -21,8 +22,9 @@ export function validateActivity(i: { title: string; category: Category; startMi
   return result(e);
 }
 
-export function validateSubject(i: { name: string; dailyTargetMin: number | null; weeklyTargetMin: number | null }, existingNames: string[]): Validation<'name' | 'daily' | 'weekly'> {
-  const e: Errors<'name' | 'daily' | 'weekly'> = {};
+export function validateSubject(i: { name: string; dailyTargetMin: number | null; weeklyTargetMin: number | null; icon?: string | null }, existingNames: string[]): Validation<'name' | 'daily' | 'weekly' | 'icon'> {
+  const e: Errors<'name' | 'daily' | 'weekly' | 'icon'> = {};
+  if (i.icon != null && !isSubjectIcon(i.icon)) e.icon = 'Pick one of the listed icons.';
   const name = i.name.trim();
   if (!name) e.name = 'Enter a subject name.';
   else if (name.length > 40) e.name = 'Keep the name under 40 characters.';

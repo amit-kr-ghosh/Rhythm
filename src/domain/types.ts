@@ -30,6 +30,8 @@ export type Subject = EntityBase & {
   weeklyTargetMin: number | null;
   notes: string;
   isDefault: boolean;
+  /** Ionicons name picked by the user (see subjectIcons.ts); absent or null means the default for the subject's name. */
+  icon?: string | null;
 };
 
 export type Plan = EntityBase & { name: string; isDefault: boolean };

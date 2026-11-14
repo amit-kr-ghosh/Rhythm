@@ -6,6 +6,7 @@ import { Chip, Row, Text, IconButton, focusRing } from './ui';
 import { Sheet } from './feedback';
 import { formatClock, parseClock, WEEKDAY_SHORT } from '../domain/time';
 import { PICKER_COLORS } from '../domain/colors';
+import { SUBJECT_ICONS } from '../domain/subjectIcons';
 import { useToggleAnim } from './motion';
 
 export function Field({ label, value, onChangeText, error, hint, placeholder, multiline, keyboardType, secure, autoCapitalize, maxLength, editable = true, onSubmitEditing, returnKeyType }: {
@@ -164,6 +165,26 @@ export type SelectOption<T> = { value: T; label: string; color?: string; hint?: 
  * Dropdown-style picker: a field showing the current choice with a chevron; tapping opens a sheet with a roomy list
  * (colour dot, name, optional hint, check on the selected row). Replaces rows of pill buttons for longer lists.
  */
+/** Pick one of the subject icons, drawn in the subject's own colour. */
+export function IconPicker({ value, color, onChange }: { value: string; color: string; onChange: (icon: string) => void }) {
+  const t = useTheme();
+  return (
+    <Row gap={t.spacing.sm} wrap>
+      {SUBJECT_ICONS.map((name) => {
+        const on = value === name;
+        return (
+          <Pressable key={name} accessibilityRole="radio" accessibilityLabel={`Icon ${name.replace(/-outline$/, '').replace(/-/g, ' ')}`} accessibilityState={{ selected: on }} onPress={() => onChange(name)}
+            style={{ width: t.minTouch, height: t.minTouch, alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? color : t.colors.track, borderWidth: on ? 0 : 1, borderColor: t.colors.border }}>
+              <Ionicons name={name as never} size={20} color={on ? t.colors.bg : t.colors.textMuted} />
+            </View>
+          </Pressable>
+        );
+      })}
+    </Row>
+  );
+}
+
 export function Select<T extends string | number | null>({ label, value, options, onChange, placeholder = 'Select', sheetTitle }: {
   label?: string; value: T; options: SelectOption<T>[]; onChange: (v: T) => void; placeholder?: string; sheetTitle?: string;
 }) {

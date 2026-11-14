@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useApp } from '../../src/state/store';
 import { Button, Card, EmptyState, IconButton, ProgressBar, Row, Screen, SectionHeader, Text } from '../../src/components/ui';
-import { ColorPicker, Field, NumberField } from '../../src/components/inputs';
+import { ColorPicker, Field, IconPicker, NumberField } from '../../src/components/inputs';
 import { Sheet, confirm } from '../../src/components/feedback';
 import { archiveSubject, deleteSubject, saveSubject, subjectUsage } from '../../src/state/actions';
 import { minLabel, useSubjectStats } from '../../src/state/extra-focus';
 import type { Subject } from '../../src/domain/types';
 import { PICKER_COLORS } from '../../src/domain/colors';
+import { defaultSubjectIcon, subjectIcon } from '../../src/domain/subjectIcons';
 import { safeBack } from '../../src/navigation/safeBack';
 
 function SubjectCard({ subject, onEdit }: { subject: Subject; onEdit: () => void }) {
@@ -19,7 +21,7 @@ function SubjectCard({ subject, onEdit }: { subject: Subject; onEdit: () => void
   return (
     <Card onPress={() => router.push(`/subjects/${subject.id}` as never)} accessibilityLabel={`${subject.name}, ${minLabel(s.todayMin)} today, ${minLabel(s.weekMin)} this week`} style={{ gap: t.spacing.sm }}>
       <Row between>
-        <Row gap={t.spacing.sm} style={{ flex: 1 }}><View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: subject.color }} /><Text variant="bodyStrong" numberOfLines={1}>{subject.name}</Text></Row>
+        <Row gap={t.spacing.sm} style={{ flex: 1 }}><View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: subject.color }}><Ionicons name={subjectIcon(subject) as never} size={18} color={t.colors.bg} /></View><Text variant="bodyStrong" numberOfLines={1}>{subject.name}</Text></Row>
         <IconButton icon="create-outline" label={`Edit ${subject.name}`} onPress={onEdit} />
       </Row>
       <Row gap={t.spacing.xl}>
@@ -39,6 +41,7 @@ export default function SubjectsScreen() {
   const [editing, setEditing] = useState<Subject | 'new' | null>(null);
   const [name, setName] = useState('');
   const [color, setColor] = useState<string>(PICKER_COLORS[0] as string);
+  const [icon, setIcon] = useState<string>(defaultSubjectIcon(''));
   const [daily, setDaily] = useState<number | null>(null);
   const [weekly, setWeekly] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
@@ -49,10 +52,11 @@ export default function SubjectsScreen() {
     setEditing(s); setErrors({}); setDeleteError(null);
     const cur = s === 'new' ? null : s;
     setName(cur?.name ?? ''); setColor(cur?.color ?? (PICKER_COLORS[subjects.length % PICKER_COLORS.length] as string));
+    setIcon(cur ? subjectIcon(cur) : defaultSubjectIcon(''));
     setDaily(cur?.dailyTargetMin ?? null); setWeekly(cur?.weeklyTargetMin ?? null); setNotes(cur?.notes ?? '');
   };
   const save = async () => {
-    const res = await saveSubject({ id: editing && editing !== 'new' ? editing.id : undefined, name, color, dailyTargetMin: daily, weeklyTargetMin: weekly, notes });
+    const res = await saveSubject({ id: editing && editing !== 'new' ? editing.id : undefined, name, color, icon, dailyTargetMin: daily, weeklyTargetMin: weekly, notes });
     if (res.ok) setEditing(null); else setErrors(res.errors);
   };
   const toggleArchive = async (s: Subject) => {
@@ -93,6 +97,9 @@ export default function SubjectsScreen() {
         <Field label="Name" value={name} onChangeText={setName} error={errors.name} maxLength={40} />
         <Text variant="label" tone="muted">Colour</Text>
         <ColorPicker value={color} onChange={setColor} />
+        <Text variant="label" tone="muted">Icon</Text>
+        <IconPicker value={icon} color={color} onChange={setIcon} />
+        {errors.icon ? <Text variant="caption" tone="danger">{errors.icon}</Text> : null}
         <NumberField label="Daily target" suffix="min" value={daily} onChange={setDaily} error={errors.daily} hint={daily ? `${(daily / 60).toFixed(1)} hours` : 'Leave empty for no target'} />
         <NumberField label="Weekly target" suffix="min" value={weekly} onChange={setWeekly} error={errors.weekly} hint={weekly ? `${(weekly / 60).toFixed(1)} hours` : 'Leave empty for no target'} />
         <Text variant="caption" tone="muted">Changing a target only affects today onward; past days keep the target that applied then.</Text>

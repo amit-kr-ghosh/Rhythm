@@ -3,15 +3,19 @@ import { View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { Card, CardTitle, EmptyState, Grid, IconButton, ProgressBar, ProgressRing, Row, Screen, Text, PageHeader } from '../../src/components/ui';
-import { Segmented } from '../../src/components/inputs';
+import { Segmented, Select } from '../../src/components/inputs';
 import { Reveal } from '../../src/components/motion';
-import { LineChart } from '../../src/components/charts';
+import { Heatmap, LineChart } from '../../src/components/charts';
 import { SubjectRing } from '../../src/components/study/parts';
 import { useApp } from '../../src/state/store';
 import { useToday } from '../../src/state/hooks';
 import { rangeSummary, formatCompact } from '../../src/domain/study';
 import { addDays, endOfMonth, parseDateKey, startOfMonth, startOfWeek, WEEKDAY_SHORT, weekdayOf } from '../../src/domain/time';
+import { heatmap, streaks } from '../../src/domain/analytics';
 import type { DateKey } from '../../src/domain/types';
+
+/** The heatmap always shows the latest 18 weeks, independent of the range selected above. */
+const HEATMAP_WEEKS = 18;
 
 type Mode = 'week' | 'month' | 'custom';
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -42,6 +46,7 @@ export default function Analytics() {
   const [mode, setMode] = useState<Mode>('week');
   const [from, setFrom] = useState<DateKey>(addDays(today, -13));
   const [to, setTo] = useState<DateKey>(today);
+  const [focusSubject, setFocusSubject] = useState<string | null>(null);
 
   const range = useMemo(() => {
     if (mode === 'week') { const f = startOfWeek(today, weekStart); return { from: f, to: addDays(f, 6) }; }
@@ -52,6 +57,14 @@ export default function Analytics() {
   const r = useMemo(() => rangeSummary(range.from, range.to, today, d.subjects, d.sessions, d.prefs), [range, today, d.subjects, d.sessions, d.prefs]);
   const week = useMemo(() => { const f = startOfWeek(today, weekStart); return rangeSummary(f, addDays(f, 6), today, d.subjects, d.sessions, d.prefs).total; }, [today, weekStart, d.subjects, d.sessions, d.prefs]);
   const month = useMemo(() => rangeSummary(startOfMonth(today), endOfMonth(today), today, d.subjects, d.sessions, d.prefs).total, [today, d.subjects, d.sessions, d.prefs]);
+
+  const heat = useMemo(() => {
+    const first = startOfWeek(addDays(today, -(HEATMAP_WEEKS - 1) * 7), weekStart);
+    return heatmap(d.sessions, { from: first, to: today }, focusSubject);
+  }, [d.sessions, today, weekStart, focusSubject]);
+  const streak = useMemo(() => streaks(d.sessions.filter((x) => focusSubject === null || x.subjectId === focusSubject), today, d.prefs.streakThresholdMin), [d.sessions, today, d.prefs.streakThresholdMin, focusSubject]);
+  const activeDays = heat.filter((c) => c.min > 0).length;
+  const subjectOptions = useMemo(() => [{ value: null as string | null, label: 'All subjects' }, ...d.subjects.filter((x) => !x.archived).sort((a, b) => a.sortOrder - b.sortOrder).map((x) => ({ value: x.id as string | null, label: x.name }))], [d.subjects]);
 
   const labels = r.daily.map((x) => (r.daily.length <= 8 ? (WEEKDAY_SHORT[weekdayOf(x.date)] as string).slice(0, 2) : String(parseDateKey(x.date).d)));
   const points = r.daily.map((x) => (x.pct === null ? null : Math.round(x.pct)));
@@ -79,6 +92,20 @@ export default function Analytics() {
               <Text variant="caption" tone="heroMuted">of {formatCompact(r.total.targetSec)} target · {r.days} day{r.days === 1 ? '' : 's'}</Text>
             </View>
           </Row>
+        </Card>
+      </Reveal>
+
+      <Reveal index={2}>
+        <Card style={{ gap: t.spacing.md }}>
+          <CardTitle icon="flame-outline" title="Consistency" />
+          <Select<string | null> label="Subject" value={focusSubject} options={subjectOptions} onChange={setFocusSubject} sheetTitle="Show consistency for" />
+          <Row gap={t.spacing.xl}>
+            <View style={{ gap: 2 }}><Text variant="caption" tone="muted">Current streak</Text><Text variant="title">{streak.current} day{streak.current === 1 ? '' : 's'}</Text></View>
+            <View style={{ gap: 2 }}><Text variant="caption" tone="muted">Longest</Text><Text variant="title">{streak.longest} day{streak.longest === 1 ? '' : 's'}</Text></View>
+            <View style={{ gap: 2 }}><Text variant="caption" tone="muted">Active days</Text><Text variant="title">{activeDays}</Text></View>
+          </Row>
+          <Text variant="caption" tone="muted">A streak day needs at least {formatCompact(d.prefs.streakThresholdMin * 60)} of focus. Heatmap: the last {HEATMAP_WEEKS} weeks.</Text>
+          <Heatmap cells={heat} weekStart={weekStart} summary={`Focus heatmap for the last ${HEATMAP_WEEKS} weeks: ${activeDays} active days, current streak ${streak.current}, longest ${streak.longest}.`} />
         </Card>
       </Reveal>
 
