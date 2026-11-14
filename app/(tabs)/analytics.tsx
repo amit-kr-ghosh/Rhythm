@@ -242,7 +242,7 @@ export default function Analytics() {
         const count = d.sessions.filter((x) => !x.deletedAt && x.subjectId === s.subjectId && x.date >= range.from && x.date <= range.to).length;
         return (
           <View key={s.subjectId} style={{ flexGrow: 1, flexShrink: 1, flexBasis: narrow ? '100%' : wide ? '31%' : '47%', minWidth: 0 }}>
-            <Card style={{ gap: t.spacing.sm, flex: 1 }} onPress={() => setSubject((cur) => (cur === s.subjectId ? null : s.subjectId))} accessibilityLabel={`${s.name}: ${Math.round(s.pct)}% of target. Tap to ${active === s.subjectId ? 'show all subjects' : 'focus on this subject'}.`}>
+            <Card style={{ gap: t.spacing.sm }} onPress={() => setSubject((cur) => (cur === s.subjectId ? null : s.subjectId))} accessibilityLabel={`${s.name}: ${Math.round(s.pct)}% of target. Tap to ${active === s.subjectId ? 'show all subjects' : 'focus on this subject'}.`}>
               <Row between gap={t.spacing.sm}>
                 <Row gap={t.spacing.sm} style={{ flex: 1, minWidth: 0 }}>
                   <IconBadge icon={sub ? subjectIcon(sub) as never : 'book-outline'} color={s.color} size={36} />
@@ -286,12 +286,20 @@ export default function Analytics() {
     </>
   );
 
-  const two = (a: React.ReactNode, b: React.ReactNode, ratio: [number, number] = [1, 1]) => (
-    <View style={{ flexDirection: wide || (!narrow && cw >= 680) ? 'row' : 'column', gap: t.spacing.md, alignItems: 'stretch' }}>
-      <View style={{ flex: ratio[0], minWidth: 0, gap: t.spacing.md }}>{a}</View>
-      <View style={{ flex: ratio[1], minWidth: 0, gap: t.spacing.md }}>{b}</View>
-    </View>
-  );
+  /**
+   * Two blocks side by side when there is room, stacked otherwise. `flex` is only set when they sit side by side: in a stacked
+   * (auto-height) column a flex-basis of 0 lets the web build shrink the block below its content, and the next section then
+   * paints over it.
+   */
+  const two = (a: React.ReactNode, b: React.ReactNode, ratio: [number, number] = [1, 1]) => {
+    const side = wide || (!narrow && cw >= 680);
+    return (
+      <View style={{ flexDirection: side ? 'row' : 'column', gap: t.spacing.md, alignItems: 'stretch' }}>
+        <View style={side ? { flex: ratio[0], minWidth: 0, gap: t.spacing.md } : { gap: t.spacing.md }}>{a}</View>
+        <View style={side ? { flex: ratio[1], minWidth: 0, gap: t.spacing.md } : { gap: t.spacing.md }}>{b}</View>
+      </View>
+    );
+  };
 
   return (
     <Screen>
