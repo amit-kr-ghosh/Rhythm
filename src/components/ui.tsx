@@ -10,8 +10,18 @@ import { Reveal, usePressScale, useToggleAnim, useTween } from './motion';
 export type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 /** Visible keyboard-focus ring (web / hardware keyboards). Native touch UIs never report `focused`. */
+/**
+ * Web only: whether the last input was the keyboard. The focus ring is for keyboard users; after a mouse or touch tap the
+ * browser still reports the element as focused, which left a stuck ring around whatever was tapped last.
+ */
+let keyboardModality = false;
+if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  document.addEventListener('keydown', (e) => { if (e.key === 'Tab' || e.key.startsWith('Arrow') || e.key === 'Enter' || e.key === ' ') keyboardModality = true; }, true);
+  document.addEventListener('pointerdown', () => { keyboardModality = false; }, true);
+}
+
 export function focusRing(t: Theme, focused: boolean | undefined): ViewStyle {
-  if (!focused || Platform.OS !== 'web') return {};
+  if (!focused || Platform.OS !== 'web' || !keyboardModality) return {};
   return { outlineStyle: 'solid', outlineWidth: 3, outlineColor: t.colors.focusRing, outlineOffset: 2 } as unknown as ViewStyle;
 }
 const softShadow = (t: Theme, strength = 1): ViewStyle => ({
@@ -403,7 +413,7 @@ export function ProgressRing({ value, size = 120, stroke = 12, color, label, cap
     <View accessible accessibilityRole="progressbar" accessibilityLabel={label} accessibilityValue={{ text: value === null ? 'No data yet' : text }} style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={size} height={size} style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}>
         <Circle cx={size / 2} cy={size / 2} r={r} stroke={onHero ? t.colors.heroTrack : t.colors.track} strokeWidth={stroke} fill="none" />
-        <Circle cx={size / 2} cy={size / 2} r={r} stroke={color ?? (onHero ? t.colors.lime : t.colors.accent)} strokeWidth={stroke} fill="none" strokeLinecap="round" strokeDasharray={`${(C * v) / 100} ${C}`} />
+        {v > 0.5 ? <Circle cx={size / 2} cy={size / 2} r={r} stroke={color ?? (onHero ? t.colors.lime : t.colors.accent)} strokeWidth={stroke} fill="none" strokeLinecap="round" strokeDasharray={`${(C * v) / 100} ${C}`} /> : null}
       </Svg>
       <RNText numberOfLines={1} adjustsFontSizeToFit style={[size >= 90 ? t.type.display : t.type.bodyStrong, size >= 90 ? { fontSize: Math.round(size * 0.25), lineHeight: Math.round(size * 0.3) } : null, { color: onHero ? t.colors.heroText : t.colors.text, maxWidth: size - stroke * 2 - 6 }]}>{text}</RNText>
       {caption ? <RNText style={[t.type.caption, { color: onHero ? t.colors.heroMuted : t.colors.textMuted }]}>{caption}</RNText> : null}

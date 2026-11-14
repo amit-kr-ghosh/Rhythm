@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ScrollView, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../src/theme/ThemeProvider';
+import { responsiveMetrics } from '../../src/theme/tokens';
 import { Card, CardTitle, Chip, EmptyState, IconBadge, IconButton, Pill, ProgressBar, ProgressRing, Row, Screen, Text, PageHeader } from '../../src/components/ui';
 import { Segmented } from '../../src/components/inputs';
 import { Reveal } from '../../src/components/motion';
@@ -79,6 +80,7 @@ export default function Analytics() {
   const win = useWindowDimensions().width;
   const [cw, setCw] = useState(win);
   const narrow = cw < 520, wide = cw >= 900;
+  const edge = responsiveMetrics(win).horizontalPadding; // page padding, so the chip row can scroll out to the screen edge
 
   const [mode, setMode] = useState<Mode>('week');
   const [from, setFrom] = useState<DateKey>(addDays(today, -13));
@@ -137,14 +139,17 @@ export default function Analytics() {
   const yMax = Math.max(100, ...pointsPct.map((p) => p ?? 0));
 
   /* ---- sections ---- */
+  // With a subject selected the progress card shows that subject's actual vs target, not the overall total.
+  const focusRow = active === null ? null : r.subjects.find((x) => x.subjectId === active) ?? null;
+  const totals = focusRow ? { actualSec: focusRow.actualSec, targetSec: focusRow.targetSec, pct: focusRow.pct } : r.total;
   const hero = (
     <Card tone="hero" style={{ flex: wide ? 1 : undefined }}>
       <Row gap={narrow ? t.spacing.lg : t.spacing.xl}>
-        <ProgressRing onHero value={Math.min(100, r.total.pct)} size={narrow ? 88 : 112} label="Overall study progress" display={`${Math.round(r.total.pct)}%`} />
+        <ProgressRing onHero value={Math.min(100, totals.pct)} size={narrow ? 88 : 112} label={focusRow ? `${focusRow.name} study progress` : 'Overall study progress'} display={`${Math.round(totals.pct)}%`} />
         <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-          <Text variant="caption" tone="heroMuted">{title}</Text>
-          <Text variant="title" tone="hero">{formatCompact(r.total.actualSec)}</Text>
-          <Text variant="caption" tone="heroMuted">of {formatCompact(r.total.targetSec)} target · {r.days} day{r.days === 1 ? '' : 's'}</Text>
+          <Text variant="caption" tone="heroMuted" numberOfLines={1}>{focusRow ? `${focusRow.name} · ${title}` : title}</Text>
+          <Text variant="title" tone="hero">{formatCompact(totals.actualSec)}</Text>
+          <Text variant="caption" tone="heroMuted">of {formatCompact(totals.targetSec)} target · {r.days} day{r.days === 1 ? '' : 's'}</Text>
         </View>
       </Row>
     </Card>
@@ -317,7 +322,8 @@ export default function Analytics() {
         ) : null}
 
         {subjects.length > 0 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: t.spacing.sm, paddingVertical: 2, paddingRight: t.spacing.md }} accessibilityLabel="Filter by subject">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} accessibilityLabel="Filter by subject"
+            style={{ marginHorizontal: -edge, marginVertical: -6 }} contentContainerStyle={{ gap: t.spacing.sm, paddingVertical: 8, paddingHorizontal: edge }}>
             <Chip label="All subjects" selected={active === null} onPress={() => setSubject(null)} />
             {subjects.map((x) => <Chip key={x.id} label={x.name} color={x.color} selected={active === x.id} onPress={() => setSubject(x.id)} />)}
           </ScrollView>
