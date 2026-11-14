@@ -56,7 +56,7 @@ export default function SessionDetail() {
   };
 
   const row = (label: string, value: string) => (
-    <Row between key={label}><Text tone="muted">{label}</Text><Text variant="bodyStrong">{value}</Text></Row>
+    <Row between key={label} gap={t.spacing.md}><Text tone="muted" style={{ flexShrink: 0 }}>{label}</Text><Text variant="bodyStrong" style={{ flexShrink: 1, textAlign: 'right' }}>{value}</Text></Row>
   );
   const start = new Date(session.startedAt), end = new Date(session.endedAt);
   const endNote = toDateKey(end) !== toDateKey(start) ? ' (next day)' : '';

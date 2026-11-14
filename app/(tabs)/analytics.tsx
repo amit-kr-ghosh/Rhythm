@@ -1,9 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { ScrollView, View, useWindowDimensions } from 'react-native';
+import { View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../src/theme/ThemeProvider';
-import { responsiveMetrics } from '../../src/theme/tokens';
-import { Card, CardTitle, Chip, EmptyState, IconBadge, IconButton, Pill, ProgressBar, ProgressRing, Row, Screen, Text, PageHeader } from '../../src/components/ui';
+import { Card, CardTitle, Chip, ChipScroller, EmptyState, IconBadge, IconButton, Pill, ProgressBar, ProgressRing, Row, Screen, Text, PageHeader } from '../../src/components/ui';
 import { Segmented } from '../../src/components/inputs';
 import { Reveal } from '../../src/components/motion';
 import { BarChart, Donut, Heatmap, Legend, LineChart, StackedBars } from '../../src/components/charts';
@@ -80,7 +79,6 @@ export default function Analytics() {
   const win = useWindowDimensions().width;
   const [cw, setCw] = useState(win);
   const narrow = cw < 520, wide = cw >= 900;
-  const edge = responsiveMetrics(win).horizontalPadding; // page padding, so the chip row can scroll out to the screen edge
 
   const [mode, setMode] = useState<Mode>('week');
   const [from, setFrom] = useState<DateKey>(addDays(today, -13));
@@ -282,7 +280,7 @@ export default function Analytics() {
           const x = tot as typeof week;
           return (
             <View key={name as string} style={{ gap: 6 }}>
-              <Row between><Text variant="bodyStrong">{name as string}</Text><Text variant="caption" tone="muted">{formatCompact(x.actualSec)} / {formatCompact(x.targetSec)} · {Math.round(x.pct)}%</Text></Row>
+              <Row between gap={t.spacing.sm}><Text variant="bodyStrong" style={{ flexShrink: 0 }}>{name as string}</Text><Text variant="caption" tone="muted" numberOfLines={1} style={{ flexShrink: 1, textAlign: 'right' }}>{formatCompact(x.actualSec)} / {formatCompact(x.targetSec)} · {Math.round(x.pct)}%</Text></Row>
               <ProgressBar value={Math.min(100, x.pct)} height={10} label={`${name as string} actual versus target`} />
             </View>
           );
@@ -322,11 +320,10 @@ export default function Analytics() {
         ) : null}
 
         {subjects.length > 0 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} accessibilityLabel="Filter by subject"
-            style={{ marginHorizontal: -edge, marginVertical: -6 }} contentContainerStyle={{ gap: t.spacing.sm, paddingVertical: 8, paddingHorizontal: edge }}>
+          <ChipScroller label="Filter by subject">
             <Chip label="All subjects" selected={active === null} onPress={() => setSubject(null)} />
             {subjects.map((x) => <Chip key={x.id} label={x.name} color={x.color} selected={active === x.id} onPress={() => setSubject(x.id)} />)}
-          </ScrollView>
+          </ChipScroller>
         ) : null}
 
         <Reveal index={1}>

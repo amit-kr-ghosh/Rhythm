@@ -339,6 +339,21 @@ export function IconButton({ icon, label, onPress, tone = 'default', size = 24, 
  * Filter / choice pill. Selected = ink (black) like "All" in the reference; `lime` makes the selected pill lime with a
  * white count bubble (the "To Do" chip).
  */
+/**
+ * A horizontally scrolling row of chips. It scrolls out to the screen edge (so the last chip is not cut off at the page
+ * padding) and leaves room above and below, so a focus ring or press animation is never clipped by the scroll area.
+ */
+export function ChipScroller({ children, label }: { children: React.ReactNode; label: string }) {
+  const t = useTheme();
+  const edge = responsiveMetrics(useWindowDimensions().width).horizontalPadding;
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} accessibilityLabel={label}
+      style={{ marginHorizontal: -edge, marginVertical: -6 }} contentContainerStyle={{ gap: t.spacing.sm, paddingVertical: 8, paddingHorizontal: edge }}>
+      {children}
+    </ScrollView>
+  );
+}
+
 export function Chip({ label, selected, onPress, color, icon, count, lime }: { label: string; selected?: boolean; onPress?: () => void; color?: string; icon?: IconName; count?: number; lime?: boolean }) {
   const t = useTheme();
   const press = usePressScale(0.96);

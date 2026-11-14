@@ -97,7 +97,7 @@ export default function SubjectsScreen() {
       <Button label="Add subject" icon="add" onPress={() => open('new')} />
       {active.length === 0 ? <EmptyState icon="book-outline" title="No subjects" body="Add a subject to track focused time and targets for it." /> : active.map((s) => <SubjectCard key={s.id} subject={s} onEdit={() => open(s)} />)}
       {archived.length ? <SectionHeader title="Archived" /> : null}
-      {archived.map((s) => <Card key={s.id}><Row between><Text tone="muted">{s.name}</Text><Row gap={t.spacing.xs}><Button label="Restore" compact fullWidth={false} variant="ghost" onPress={() => void toggleArchive(s)} /><IconButton icon="trash-outline" tone="danger" label={`Delete ${s.name}`} onPress={() => void remove(s)} /></Row></Row></Card>)}
+      {archived.map((s) => <Card key={s.id}><Row between gap={t.spacing.sm}><View style={{ flex: 1, minWidth: 0 }}><Text tone="muted" numberOfLines={1}>{s.name}</Text></View><Row gap={t.spacing.xs}><Button label="Restore" compact fullWidth={false} variant="ghost" onPress={() => void toggleArchive(s)} /><IconButton icon="trash-outline" tone="danger" label={`Delete ${s.name}`} onPress={() => void remove(s)} /></Row></Row></Card>)}
 
       <Sheet visible={editing !== null} title={editing === 'new' ? 'New subject' : 'Edit subject'} onClose={() => setEditing(null)}
         footer={<Button label="Save" onPress={() => void save()} />}>

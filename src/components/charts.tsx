@@ -64,9 +64,9 @@ export function Legend({ items }: { items: { label: string; color: string; value
   return (
     <View style={{ gap: t.spacing.sm }}>
       {items.map((i) => (
-        <Row key={i.label} between>
-          <Row gap={t.spacing.sm}><View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: i.color }} /><Text variant="caption">{i.label}</Text></Row>
-          {i.value ? <Text variant="caption" tone="muted">{i.value}</Text> : null}
+        <Row key={i.label} between gap={t.spacing.sm}>
+          <Row gap={t.spacing.sm} style={{ flex: 1, minWidth: 0 }}><View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: i.color }} /><Text variant="caption" numberOfLines={1} style={{ flexShrink: 1 }}>{i.label}</Text></Row>
+          {i.value ? <Text variant="caption" tone="muted" style={{ flexShrink: 0 }}>{i.value}</Text> : null}
         </Row>
       ))}
     </View>
@@ -189,7 +189,7 @@ export function HBars({ rows, format }: { rows: { label: string; value: number; 
     <View style={{ gap: t.spacing.md }}>
       {rows.map((r) => (
         <View key={r.label} accessible accessibilityLabel={`${r.label}: ${format(r.value)}${r.sub ? `, ${r.sub}` : ''}`} style={{ gap: 4 }}>
-          <Row between><Text variant="caption">{r.label}</Text><Text variant="caption" tone="muted">{format(r.value)}{r.sub ? ` · ${r.sub}` : ''}</Text></Row>
+          <Row between gap={t.spacing.sm}><Text variant="caption" numberOfLines={1} style={{ flexShrink: 1 }}>{r.label}</Text><Text variant="caption" tone="muted" style={{ flexShrink: 0 }}>{format(r.value)}{r.sub ? ` · ${r.sub}` : ''}</Text></Row>
           <View style={{ height: 12, borderRadius: 6, backgroundColor: t.colors.track, overflow: 'hidden' }}><View style={{ width: `${(r.value / max) * 100}%`, height: '100%', backgroundColor: r.color, borderRadius: 6 }} /></View>
         </View>
       ))}

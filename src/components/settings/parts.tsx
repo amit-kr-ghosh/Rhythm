@@ -27,7 +27,7 @@ export function Group({ title, children }: { title?: string; children: React.Rea
   return (
     <View style={{ gap: t.spacing.sm }}>
       {title ? <Text variant="label" tone="muted" style={{ marginLeft: t.spacing.md }}>{title}</Text> : null}
-      <Card style={{ padding: 0, overflow: 'hidden' }}>{children}</Card>
+      <Card style={{ padding: 0 }}><View style={{ overflow: 'hidden', borderRadius: t.radius.xl }}>{children}</View></Card>
     </View>
   );
 }
