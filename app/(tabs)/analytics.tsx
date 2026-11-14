@@ -50,7 +50,7 @@ function Tile({ label, value, sub, extra, basis }: { label: string; value: strin
   const t = useTheme();
   return (
     <View style={{ flexGrow: 1, flexShrink: 1, flexBasis: basis as never, minWidth: 0 }}>
-      <Card tone="sunken" style={{ gap: 2, height: '100%' }}>
+      <Card tone="sunken" style={{ gap: 2, flex: 1 }}>
         <Text variant="caption" tone="muted" numberOfLines={1}>{label}</Text>
         <Text variant="title" numberOfLines={1} fit>{value}</Text>
         <Row between gap={t.spacing.xs} style={{ minHeight: 24 }}>
@@ -238,7 +238,7 @@ export default function Analytics() {
         const count = d.sessions.filter((x) => !x.deletedAt && x.subjectId === s.subjectId && x.date >= range.from && x.date <= range.to).length;
         return (
           <View key={s.subjectId} style={{ flexGrow: 1, flexShrink: 1, flexBasis: narrow ? '100%' : wide ? '31%' : '47%', minWidth: 0 }}>
-            <Card style={{ gap: t.spacing.sm, height: '100%' }} onPress={() => setSubject((cur) => (cur === s.subjectId ? null : s.subjectId))} accessibilityLabel={`${s.name}: ${Math.round(s.pct)}% of target. Tap to ${active === s.subjectId ? 'show all subjects' : 'focus on this subject'}.`}>
+            <Card style={{ gap: t.spacing.sm, flex: 1 }} onPress={() => setSubject((cur) => (cur === s.subjectId ? null : s.subjectId))} accessibilityLabel={`${s.name}: ${Math.round(s.pct)}% of target. Tap to ${active === s.subjectId ? 'show all subjects' : 'focus on this subject'}.`}>
               <Row between gap={t.spacing.sm}>
                 <Row gap={t.spacing.sm} style={{ flex: 1, minWidth: 0 }}>
                   <IconBadge icon={sub ? subjectIcon(sub) as never : 'book-outline'} color={s.color} size={36} />

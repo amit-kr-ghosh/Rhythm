@@ -118,7 +118,7 @@ export function Heatmap({ cells, weekStart = 1, summary, selected, onSelect }: {
   const gap = 3, left = 16, size = Math.max(8, Math.min(26, (w - left - gap * (cols - 1)) / cols));
   const fillOf = (c: HeatCellView) => (c.level === 0 ? t.colors.heat[0] : c.color ?? t.colors.heat[c.level]);
   return (
-    <View accessible={!onSelect} accessibilityLabel={summary} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
+    <View accessible accessibilityLabel={summary} onLayout={(e) => setW(e.nativeEvent.layout.width)}>
       <Svg width={w} height={7 * (size + gap) + 4}>
         {[0, 2, 4, 6].map((r) => <SvgText key={r} x={0} y={r * (size + gap) + size - 2} fontSize={9} fill={t.colors.textFaint}>{(WEEKDAY_SHORT[(r + weekStart) % 7] as string).slice(0, 1)}</SvgText>)}
         {cells.map((c, i) => {
