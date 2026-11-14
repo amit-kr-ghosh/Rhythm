@@ -20,6 +20,10 @@ type Mode = 'week' | 'month' | 'custom';
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const short = (d: DateKey) => { const p = parseDateKey(d); return `${p.d} ${MONTHS[p.m - 1]}`; };
 const mins = (m: number) => formatCompact(Math.round(m * 60));
+/** Very short label for bar tops ("45m", "1.5h"): full "1h 20m" labels are wider than the bars on a phone. */
+const tiny = (m: number) => (m < 60 ? `${Math.round(m)}m` : `${(m / 60).toFixed(m % 60 === 0 ? 0 : 1)}h`);
+/** Cards inside a column grow to fill it, so side-by-side columns end at the same height. flexGrow (not flex:1) so stacked cards keep their natural height. */
+const FILL = { flexGrow: 1 } as const;
 
 /** Heatmap length follows the room available: roughly one quarter on a phone, up to a year-ish on a wide screen. */
 const heatWeeks = (w: number) => (w < 520 ? 13 : w < 900 ? 22 : 34);
@@ -50,13 +54,13 @@ function Tile({ label, value, sub, extra, basis }: { label: string; value: strin
   const t = useTheme();
   return (
     <View style={{ flexGrow: 1, flexShrink: 1, flexBasis: basis as never, minWidth: 0 }}>
-      <Card tone="sunken" style={{ gap: 2, flex: 1 }}>
-        <Text variant="caption" tone="muted" numberOfLines={1}>{label}</Text>
-        <Text variant="title" numberOfLines={1} fit>{value}</Text>
+      <Card tone="sunken" style={{ gap: 2, flexGrow: 1 }}>
         <Row between gap={t.spacing.xs} style={{ minHeight: 24 }}>
-          {sub ? <Text variant="caption" tone="muted" numberOfLines={1} style={{ flexShrink: 1 }}>{sub}</Text> : <View />}
-          {extra}
+          <Text variant="caption" tone="muted" numberOfLines={1} style={{ flexShrink: 1 }}>{label}</Text>
+          {extra ?? null}
         </Row>
+        <Text variant="title" numberOfLines={1} fit>{value}</Text>
+        <Text variant="caption" tone="muted" numberOfLines={1}>{sub ?? ' '}</Text>
       </Card>
     </View>
   );
@@ -128,7 +132,7 @@ export default function Analytics() {
   const bestHour = hours.some((m) => m > 0) ? hours.indexOf(Math.max(...hours)) : null;
   const bestDay = wdays.some((m) => m > 0) ? wdays.indexOf(Math.max(...wdays)) : null;
 
-  const tileBasis = narrow ? '47%' : '23%';
+  const tileBasis = narrow || wide ? '47%' : '23%';
   const pointsPct = r.daily.map((x) => (x.pct === null ? null : Math.round(x.pct)));
   const yMax = Math.max(100, ...pointsPct.map((p) => p ?? 0));
 
@@ -148,7 +152,7 @@ export default function Analytics() {
 
   const tiles = (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.spacing.sm + 2, flex: wide ? 1.4 : undefined }}>
-      <Tile basis={tileBasis} label="Focus time" value={mins(cmp.current)} sub={`vs ${mins(cmp.previous)} before`} extra={<Delta pct={cmp.deltaPct} deltaMin={cmp.deltaMin} />} />
+      <Tile basis={tileBasis} label="Focus time" value={mins(cmp.current)} sub={`before: ${mins(cmp.previous)}`} extra={<Delta pct={cmp.deltaPct} deltaMin={cmp.deltaMin} />} />
       <Tile basis={tileBasis} label="Sessions" value={String(inRange.length)} sub={inRange.length ? `${activeDays} active day${activeDays === 1 ? '' : 's'}` : undefined} />
       <Tile basis={tileBasis} label="Avg session" value={avg === null ? '—' : mins(avg)} sub={bestHour === null ? undefined : `best hour ${bestHour}:00`} />
       <Tile basis={tileBasis} label="Streak" value={`${streak.current} day${streak.current === 1 ? '' : 's'}`} sub={`longest ${streak.longest}`} />
@@ -156,13 +160,13 @@ export default function Analytics() {
   );
 
   const stacked = (
-    <Card style={{ gap: t.spacing.md }}>
+    <Card style={[{ gap: t.spacing.md }, FILL]}>
       <CardTitle icon="bar-chart-outline" title="Daily focus" color={accent} />
       {empty ? <EmptyState icon="stats-chart-outline" title="No sessions in this range" body="Record study time with the timer or a manual entry and it will appear here." /> : (
         <>
           <StackedBars
             days={perDay.map((x) => ({ label: label(x.date, perDay.length), segments: x.parts.map((p) => ({ value: p.min, color: colorOf(p.subjectId), name: nameOf(p.subjectId) })) }))}
-            format={(v) => mins(v)} height={narrow ? 180 : 210}
+            format={tiny} height={narrow ? 180 : 210}
             summary={`Daily focus by subject, ${title}: ${perDay.map((x) => `${x.date} ${mins(x.totalMin)}`).join(', ')}.`}
           />
           <Legend items={dist.filter((x) => active === null || x.subjectId === active).map((x) => ({ label: x.name, color: x.color ?? t.colors.textFaint, value: mins(x.min) }))} />
@@ -172,17 +176,17 @@ export default function Analytics() {
   );
 
   const share = (
-    <Card style={{ gap: t.spacing.md }}>
+    <Card style={[{ gap: t.spacing.md }, FILL]}>
       <CardTitle icon="pie-chart-outline" title="Where the time goes" />
       {dist.length === 0 ? <EmptyState icon="pie-chart-outline" title="Nothing yet" body="Your split by subject shows up after your first session." /> : (
-        <Row gap={t.spacing.xl} wrap style={{ justifyContent: 'center' }}>
-          <Donut size={narrow ? 128 : 150} thickness={narrow ? 20 : 24} centerLabel={mins(dist.reduce((a, x) => a + x.min, 0))} centerSub="total"
+        <View style={{ flexDirection: narrow ? 'column' : 'row', alignItems: 'center', gap: narrow ? t.spacing.lg : t.spacing.xl }}>
+          <Donut size={narrow ? 140 : 150} thickness={narrow ? 22 : 24} centerLabel={mins(dist.reduce((a, x) => a + x.min, 0))} centerSub="total"
             slices={dist.map((x) => ({ label: x.name, value: x.min, color: x.color ?? t.colors.textFaint }))}
             summary={`Time by subject: ${dist.map((x) => `${x.name} ${Math.round(x.share)}%`).join(', ')}.`} />
-          <View style={{ flex: 1, minWidth: 160 }}>
+          <View style={narrow ? { alignSelf: 'stretch' } : { flex: 1, minWidth: 0 }}>
             <Legend items={dist.map((x) => ({ label: x.name, color: x.color ?? t.colors.textFaint, value: `${Math.round(x.share)}% · ${mins(x.min)}` }))} />
           </View>
-        </Row>
+        </View>
       )}
     </Card>
   );
@@ -212,18 +216,18 @@ export default function Analytics() {
 
   const patterns = (
     <>
-      <Card style={{ gap: t.spacing.md }}>
+      <Card style={[{ gap: t.spacing.md }, FILL]}>
         <CardTitle icon="calendar-number-outline" title="Best days" color={accent} right={bestDay !== null ? <Pill label={WEEKDAY_SHORT[bestDay] as string} color={accent} /> : undefined} />
         {wdays.every((m) => m === 0) ? <Text variant="caption" tone="muted">Not enough data in this range yet.</Text> : (
-          <BarChart color={accent} height={150} format={(v) => mins(v)}
+          <BarChart color={accent} height={150} format={tiny}
             data={Array.from({ length: 7 }, (_, i) => { const dow = (weekStart + i) % 7; return { label: (WEEKDAY_SHORT[dow] as string).slice(0, 2), value: wdays[dow]!, color: dow === bestDay ? accent : undefined }; })}
             summary={`Focus by weekday, ${scope}: ${wdays.map((m, i) => `${WEEKDAY_SHORT[i]} ${mins(m)}`).join(', ')}.`} />
         )}
       </Card>
-      <Card style={{ gap: t.spacing.md }}>
+      <Card style={[{ gap: t.spacing.md }, FILL]}>
         <CardTitle icon="time-outline" title="Best hours" color={accent} right={bestHour !== null ? <Pill label={`${bestHour}:00`} color={accent} /> : undefined} />
         {hours.every((m) => m === 0) ? <Text variant="caption" tone="muted">Not enough data in this range yet.</Text> : (
-          <BarChart color={accent} height={150} format={(v) => mins(v)} data={hourData.map((x) => ({ ...x, color: Number(x.label) === bestHour ? accent : undefined }))}
+          <BarChart color={accent} height={150} format={tiny} data={hourData.map((x) => ({ ...x, color: Number(x.label) === bestHour ? accent : undefined }))}
             summary={`Focus by hour of day, ${scope}: busiest at ${bestHour}:00.`} />
         )}
       </Card>
@@ -260,14 +264,14 @@ export default function Analytics() {
 
   const targets = (
     <>
-      <Card style={{ gap: t.spacing.md }}>
+      <Card style={[{ gap: t.spacing.md }, FILL]}>
         <CardTitle icon="trending-up-outline" title="Target reached per day" />
         {r.sessionCount === 0 ? <EmptyState icon="stats-chart-outline" title="No sessions in this range" body="Record study time and your daily progress appears here." /> : (
           <LineChart points={pointsPct} labels={r.daily.map((x) => label(x.date, r.daily.length))} height={190} yMax={yMax} color={accent}
             summary={`Daily share of the study target reached, ${title}: ${r.daily.map((x) => `${x.date} ${x.pct === null ? 'no data' : `${Math.round(x.pct)}%`}`).join(', ')}.`} />
         )}
       </Card>
-      <Card style={{ gap: t.spacing.md }}>
+      <Card style={[{ gap: t.spacing.md }, FILL]}>
         <CardTitle icon="calendar-outline" title="Week and month" />
         {[['This week', week], ['This month', month]].map(([name, tot]) => {
           const x = tot as typeof week;
