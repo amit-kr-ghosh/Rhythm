@@ -13,7 +13,7 @@ import { useStudyDay, useNow, useToday } from '../../src/state/hooks';
 import { cancelFocus, enableNotifications, finishFocus, pauseFocus, resumeFocus, setTimerNote, startFocus, touchTimer } from '../../src/state/actions';
 import { unlockAudio } from '../../src/services/alerts';
 import { nextTimerEvent } from '../../src/domain/alerts';
-import { phaseAt, runningMs, selectableMode } from '../../src/domain/timer';
+import { focusMinForRemaining, phaseAt, runningMs, selectableMode } from '../../src/domain/timer';
 import { formatHMS, formatDuration } from '../../src/domain/time';
 import { sessionsOn } from '../../src/domain/progress';
 import type { SessionMode } from '../../src/domain/types';
@@ -53,7 +53,7 @@ export default function FocusScreen() {
 function SetupTimer() {
   const t = useTheme();
   const router = useRouter();
-  const params = useLocalSearchParams() as { subjectId?: string; taskId?: string };
+  const params = useLocalSearchParams() as { subjectId?: string; taskId?: string; n?: string };
   const prefs = useApp((s) => s.data.prefs);
   const allSubjectsRaw = useApp((s) => s.data.subjects);
   const subjects = useMemo(() => selectableSubjects(allSubjectsRaw), [allSubjectsRaw]);
@@ -71,6 +71,17 @@ function SetupTimer() {
     if (subjectId !== null && subjects.some((x) => x.id === subjectId)) return;
     setSubjectId(subjects[0]!.id);
   }, [subjectId, subjects]);
+  // A subject's play button on Today lands here, possibly while this tab is already mounted (so the initial state above is stale):
+  // each tap carries a fresh `n`, which re-applies the subject and sets the timer length to the time left toward its daily target.
+  const appliedN = React.useRef<string | undefined>(undefined);
+  React.useEffect(() => {
+    if (!params.n || !params.subjectId || appliedN.current === params.n) return;
+    const row = studyToday.rows.find((x) => x.subjectId === params.subjectId);
+    if (!row && subjects.length === 0) return; // data not loaded yet; retry when it arrives
+    appliedN.current = params.n;
+    if (subjects.some((x) => x.id === params.subjectId)) setSubjectId(params.subjectId);
+    if (row) setFocusMin(focusMinForRemaining(row.remainingSec, prefs.timer.focusMin));
+  }, [params.n, params.subjectId, studyToday.rows, subjects, prefs.timer.focusMin]);
   const taskId: string | null = params.taskId ?? null;
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -92,6 +103,7 @@ function SetupTimer() {
 
   const winW = useWindowDimensions().width;
   const bump = (d: number) => setFocusMin(Math.max(1, Math.min(240, focusMin + d)));
+  const leftSec = studyToday.rows.find((x) => x.subjectId === subjectId)?.remainingSec ?? 0;
   const shownSec = mode === 'stopwatch' ? 0 : focusMin * 60;
   return (
     <Screen contentStyle={WEB_NARROW}>
@@ -104,7 +116,7 @@ function SetupTimer() {
             {mode !== 'stopwatch' ? <IconButton icon="remove" label="Shorter by 5 minutes" solid onPress={() => bump(-5)} /> : null}
             <View accessible accessibilityLabel={mode === 'stopwatch' ? 'Stopwatch, counts up' : `${focusMin} minutes`} style={{ alignItems: 'center', minWidth: 0, flexShrink: 1 }}>
               <Text variant="hero" tone="hero" style={{ fontSize: winW < 360 ? 38 : winW < 440 ? 44 : 56, lineHeight: winW < 360 ? 44 : winW < 440 ? 50 : 62, fontVariant: ['tabular-nums'] }}>{shortClock(shownSec)}</Text>
-              <Text variant="caption" tone="heroMuted">{mode === 'stopwatch' ? 'Counts up until you finish' : `Focus · then ${breakMin} min break`}</Text>
+              <Text variant="caption" tone="heroMuted">{mode === 'stopwatch' ? (leftSec > 0 ? `Counts up · ${formatCompact(leftSec)} left today` : 'Counts up until you finish') : `Focus · then ${breakMin} min break`}</Text>
             </View>
             {mode !== 'stopwatch' ? <IconButton icon="add" label="Longer by 5 minutes" solid onPress={() => bump(5)} /> : null}
           </Row>

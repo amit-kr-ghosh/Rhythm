@@ -66,7 +66,7 @@ export default function Home() {
   const dateText = `${WEEKDAY_LONG[weekdayOf(today)]}, ${now.toLocaleDateString(undefined, { day: 'numeric', month: 'long' })}`;
   const dateShort = `${(WEEKDAY_LONG[weekdayOf(today)] as string).slice(0, 3)}, ${now.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`;
   const total = study.total;
-  const start = (subjectId: string) => router.push({ pathname: '/focus', params: { subjectId } } as never);
+  const start = (subjectId: string) => router.push({ pathname: '/focus', params: { subjectId, n: String(Date.now()) } } as never);
   const log = (subjectId: string) => router.push({ pathname: '/manual-session', params: { subjectId } } as never);
 
   const studyBlock = (

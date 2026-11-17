@@ -201,3 +201,13 @@ test('countdown is no longer selectable; legacy countdown preferences map to pom
   const s = startTimer(cfg({ mode: 'countdown', focusMs: 25 * MIN }), 'legacy', T0);
   assert.equal(phaseAt(s, T0 + 5 * MIN).remainingMs, 20 * MIN);
 });
+
+import { focusMinForRemaining } from '../src/domain/timer';
+test('focusMinForRemaining: rounds up, clamps, falls back when nothing left', () => {
+  assert.equal(focusMinForRemaining(5400, 25), 90);
+  assert.equal(focusMinForRemaining(61, 25), 2);
+  assert.equal(focusMinForRemaining(10, 25), 1);
+  assert.equal(focusMinForRemaining(99 * 3600, 25), 240);
+  assert.equal(focusMinForRemaining(0, 25), 25);
+  assert.equal(focusMinForRemaining(NaN, 25), 25);
+});
