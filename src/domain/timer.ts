@@ -35,11 +35,11 @@ export type TimerState = TimerConfig & {
 export const SELECTABLE_MODES = ['stopwatch', 'pomodoro'] as const;
 export const selectableMode = (m: SessionMode): 'stopwatch' | 'pomodoro' => (m === 'stopwatch' ? 'stopwatch' : 'pomodoro');
 
-/** Focus length (minutes) that covers the time left toward a subject's daily target, clamped to the stepper's 1–240 range.
- *  Nothing left (target reached or none set) keeps the fallback length. */
-export function focusMinForRemaining(remainingSec: number, fallbackMin: number): number {
-  if (!Number.isFinite(remainingSec) || remainingSec <= 0) return fallbackMin;
-  return Math.max(1, Math.min(240, Math.ceil(remainingSec / 60)));
+/** Pomodoro focus length when starting from a subject: the usual length, shortened only when less than that is left toward the
+ *  subject's daily target. Nothing left (target reached or none set) keeps the usual length. */
+export function focusMinForRemaining(remainingSec: number, usualMin: number): number {
+  if (!Number.isFinite(remainingSec) || remainingSec <= 0) return usualMin;
+  return Math.max(1, Math.min(usualMin, Math.ceil(remainingSec / 60)));
 }
 
 export const MAX_SESSION_MS = 16 * 3600_000;

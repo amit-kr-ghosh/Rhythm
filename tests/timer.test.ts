@@ -203,11 +203,12 @@ test('countdown is no longer selectable; legacy countdown preferences map to pom
 });
 
 import { focusMinForRemaining } from '../src/domain/timer';
-test('focusMinForRemaining: rounds up, clamps, falls back when nothing left', () => {
-  assert.equal(focusMinForRemaining(5400, 25), 90);
+test('focusMinForRemaining: usual length, shortened only when less is left', () => {
+  assert.equal(focusMinForRemaining(3 * 3600, 25), 25);
+  assert.equal(focusMinForRemaining(25 * 60, 25), 25);
+  assert.equal(focusMinForRemaining(10 * 60, 25), 10);
   assert.equal(focusMinForRemaining(61, 25), 2);
   assert.equal(focusMinForRemaining(10, 25), 1);
-  assert.equal(focusMinForRemaining(99 * 3600, 25), 240);
   assert.equal(focusMinForRemaining(0, 25), 25);
   assert.equal(focusMinForRemaining(NaN, 25), 25);
 });
