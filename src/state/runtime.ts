@@ -19,7 +19,9 @@ import { recoverTimer, type TimerState } from '../domain/timer';
 import { recordTargets } from '../domain/progress';
 import { applyDefaultsV2, applyDesignV3 } from '../data/upgrade';
 import { toSession } from '../domain/sessions';
-import { ENTITY_KINDS, type EntityKind } from '../domain/types';
+import { ENTITY_KINDS, type EntityKind, type NotificationSettings } from '../domain/types';
+import { applyDeviceNotif, applyDevicePrefs, pickDevicePrefs, type DevicePrefs } from '../domain/deviceSettings';
+import { DEVICE_NOTIF_KEY, DEVICE_PREFS_KEY } from './deviceKeys';
 import { LIST_KINDS, emptyData, mergeIntoState, showToast, store, type AppData, type ListKind } from './store';
 
 let repo: Repo | null = null;
@@ -56,7 +58,14 @@ export async function loadAll(): Promise<AppData> {
   const r = getRepo();
   const [prefs, notif] = await Promise.all([r.get('preferences', 'preferences'), r.get('notificationSettings', 'notificationSettings')]);
   const nowIso = new Date().toISOString();
-  const data = emptyData(prefs ?? buildDefaultPreferences(nowIso), notif ?? buildDefaultNotificationSettings(nowIso));
+  // Per-device settings (appearance, timer defaults, notifications) come from this device's own storage. First run after this
+  // change adopts whatever this device already had, so nobody's settings jump.
+  const basePrefs = prefs ?? buildDefaultPreferences(nowIso), baseNotif = notif ?? buildDefaultNotificationSettings(nowIso);
+  let devPrefs = await r.kvJson<Partial<DevicePrefs>>(DEVICE_PREFS_KEY);
+  if (!devPrefs) { devPrefs = pickDevicePrefs(basePrefs); await r.kvSet(DEVICE_PREFS_KEY, JSON.stringify(devPrefs)); }
+  let devNotif = await r.kvJson<NotificationSettings>(DEVICE_NOTIF_KEY);
+  if (!devNotif) { devNotif = baseNotif; await r.kvSet(DEVICE_NOTIF_KEY, JSON.stringify(devNotif)); }
+  const data = emptyData(applyDevicePrefs(basePrefs, devPrefs), applyDeviceNotif(baseNotif, devNotif));
   for (const kind of LIST_KINDS) {
     (data[kind] as unknown[]) = await r.all(kind);
   }
@@ -80,8 +89,9 @@ export async function reloadFromDisk(): Promise<void> {
 export async function reloadKinds(kinds: EntityKind[]): Promise<void> {
   const r = getRepo();
   for (const k of kinds) {
-    if (k === 'preferences') { const p = await r.get('preferences', 'preferences'); if (p) store.set((s) => ({ data: { ...s.data, prefs: p } })); }
-    else if (k === 'notificationSettings') { const n = await r.get('notificationSettings', 'notificationSettings'); if (n) store.set((s) => ({ data: { ...s.data, notif: n } })); }
+    // A change that arrived from another device updates shared account data only; this device keeps its own appearance/timer/notification settings.
+    if (k === 'preferences') { const p = await r.get('preferences', 'preferences'); if (p) store.set((s) => ({ data: { ...s.data, prefs: applyDevicePrefs(p, pickDevicePrefs(s.data.prefs)) } })); }
+    else if (k === 'notificationSettings') { /* per-device: remote copies are ignored */ }
     else {
       const rows = await r.all(k as ListKind);
       store.set((s) => ({ data: { ...s.data, [k]: rows } }));

@@ -2,6 +2,8 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { deterministicUuid, uuid } from '../domain/ids';
 import { toDateKey } from '../domain/time';
+import { DEVICE_NOTIF_KEY, DEVICE_PREFS_KEY } from './deviceKeys';
+import { pickDevicePrefs, splitPrefsPatch } from '../domain/deviceSettings';
 import type {
   ActivityLog, ActivityTemplate, Affirmation, Category, DateKey, EntityBase, EntityKind, EntityMap, Goal, Habit, HabitRecord, LogStatus,
   Milestone, NotificationSettings, Occurrence, Preferences, Priority, Recurrence, SavedQuote, ScheduleException, SessionMode,
@@ -68,10 +70,14 @@ export async function updatePrefs(patch: Partial<Omit<Preferences, keyof EntityB
     const v = validateTimerConfig({ mode: next.timer.mode, focusMin: next.timer.focusMin, breakMin: next.timer.breakMin });
     if (!v.ok) return bad(v);
   }
-  await getRepo().put('preferences', next);
+  const { shared } = splitPrefsPatch(patch);
+  // Appearance, week start, timer defaults and reminders stay on this device; only account data is saved to the synced record.
+  await getRepo().kvSet(DEVICE_PREFS_KEY, JSON.stringify(pickDevicePrefs(next)));
+  if (shared || next.targetHistory !== cur.targetHistory) await getRepo().put('preferences', next);
   store.set((s) => ({ data: { ...s.data, prefs: next } }));
   if (patch.theme) { try { await AsyncStorage.setItem('rhythm.theme', patch.theme); } catch { /* cached copy is only an optimisation */ } }
-  scheduleSync(); scheduleReplan();
+  if (shared) scheduleSync();
+  scheduleReplan();
   return { ok: true };
 }
 
@@ -82,9 +88,10 @@ export async function updateNotif(patch: Partial<Omit<NotificationSettings, keyo
     const v = validateQuietHours({ startMin: next.quietStartMin, endMin: next.quietEndMin });
     if (!v.ok) return bad(v);
   }
-  await getRepo().put('notificationSettings', next);
+  // Per-device: never queued for sync, so this phone's choices cannot change the browser's (or the reverse).
+  await getRepo().kvSet(DEVICE_NOTIF_KEY, JSON.stringify(next));
   store.set((s) => ({ data: { ...s.data, notif: next } }));
-  scheduleSync(); scheduleReplan(200);
+  scheduleReplan(200);
   return { ok: true };
 }
 
