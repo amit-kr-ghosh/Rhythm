@@ -63,7 +63,7 @@ function TabItem({ name, title, focused, onPress, running, wide }: { name: strin
   const icon = (
     <Animated.View style={{ transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [1, 1.1] }) }] }}>
       <Ionicons name={(focused ? on : off) as never} size={wide ? 21 : 20} color={fg} />
-      {running && name === 'focus' ? <View style={{ position: 'absolute', top: -2, right: -4 }}><PulseDot color={t.colors.success} size={9} /></View> : null}
+      {running && name === 'focus' && !focused ? <View style={{ position: 'absolute', top: -2, right: -4 }}><PulseDot color={t.colors.success} size={9} /></View> : null}
     </Animated.View>
   );
   return (

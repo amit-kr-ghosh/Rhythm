@@ -5,7 +5,7 @@ import { Banner, Button, Card, EmptyState, IconButton, ProgressRing, Row, Screen
 import { DurationStepper, Field, Segmented, Select } from '../../src/components/inputs';
 import { confirm } from '../../src/components/feedback';
 import { formatCompact, selectableSubjects } from '../../src/domain/study';
-import { PulseDot, Reveal } from '../../src/components/motion';
+import { Reveal } from '../../src/components/motion';
 import { SessionRow } from '../../src/components/focus/SessionRow';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useApp } from '../../src/state/store';
@@ -214,7 +214,7 @@ function RunningTimer() {
   const ringPct = timer.mode === 'stopwatch' ? ((run % 3_600_000) / 3_600_000) * 100
     : timer.mode === 'countdown' ? Math.min(100, (run / Math.max(1, timer.focusMs)) * 100)
     : phase.kind === 'break' ? (1 - (phase.remainingMs ?? 0) / Math.max(1, timer.breakMs)) * 100 : (1 - (phase.remainingMs ?? 0) / Math.max(1, timer.focusMs)) * 100;
-  const ringColor = paused ? t.colors.warning : phase.kind === 'break' ? t.colors.success : t.colors.lime;
+  const ringColor = paused ? t.colors.warning : phase.kind === 'break' ? t.colors.success : subject?.color ?? t.colors.lime;
   return (
     <Screen contentStyle={WEB_NARROW}>
       <PageHeader light="Deep" title="Focus" lead={subject?.name ?? 'No subject'} />
@@ -223,9 +223,13 @@ function RunningTimer() {
           <View accessible accessibilityLabel={spoken} accessibilityLiveRegion="none">
             <ProgressRing onHero value={ringPct} size={ringSize} stroke={14} color={ringColor} label={spoken} display={formatHMS(Math.max(0, Math.floor(shown / 1000)))} caption={phaseLabel} />
           </View>
+          {subject ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: '100%', paddingHorizontal: 14, minHeight: 34, borderRadius: 999, backgroundColor: t.colors.heroTrack }}>
+              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: subject.color }} />
+              <Text variant="label" tone="hero" numberOfLines={1} style={{ flexShrink: 1, fontWeight: '700' }}>{subject.name}</Text>
+            </View>
+          ) : null}
           <Row gap={t.spacing.sm}>
-            <PulseDot color={paused ? t.colors.warning : t.colors.lime} active={!paused} />
-            {subject ? <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: subject.color }} /> : null}
             <Text variant="caption" tone="heroMuted">
               {paused ? 'Paused time isn’t counted.' : timer.mode === 'pomodoro' ? `Recorded ${formatHMS(Math.floor(run / 1000))} · breaks excluded` : `Recorded ${formatHMS(Math.floor(run / 1000))}`}
             </Text>

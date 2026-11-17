@@ -103,7 +103,7 @@ export default function Home() {
       {timer ? (
         <Card tone="accent" onPress={() => router.push('/focus')} accessibilityLabel="Focus timer is running. Open timer" style={{ padding: t.spacing.lg }}>
           <Row><PulseDot color={timer.status === 'running' ? t.colors.success : t.colors.warning} active={timer.status === 'running'} />
-            <Text variant="bodyStrong" style={{ flex: 1 }}>{timer.status === 'running' ? 'Timer running' : 'Timer paused'}</Text>
+            <Text variant="bodyStrong" style={{ flex: 1 }}>{`${timer.status === 'running' ? 'Timer running' : 'Timer paused'}${study.rows.find((r) => r.subjectId === timer.subjectId)?.name ? ' · ' + study.rows.find((r) => r.subjectId === timer.subjectId)!.name : ''}`}</Text>
             <Ionicons name="chevron-forward" size={18} color={t.colors.textMuted} /></Row>
         </Card>
       ) : null}
