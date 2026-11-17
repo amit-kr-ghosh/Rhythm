@@ -189,3 +189,10 @@ test('subjectHeatmap colours each day by its top subject and scales intensity to
   assert.equal(cells[0]!.color, null, 'empty day has no colour');
   assert.equal(cells[0]!.subjectId, null);
 });
+
+import { overallTargets } from '../src/domain/study';
+test('overallTargets sums per-subject targets; missing weekly counts as 7 days', () => {
+  const mk = (id: string, d: number | null, w: number | null) => ({ id, deletedAt: null, archived: false, sortOrder: 0, dailyTargetMin: d, weeklyTargetMin: w }) as never;
+  assert.deepEqual(overallTargets([mk('a', 120, 600), mk('b', 60, null), mk('c', null, null)]), { dailyMin: 180, weeklyMin: 1020 });
+  assert.deepEqual(overallTargets([]), { dailyMin: 0, weeklyMin: 0 });
+});

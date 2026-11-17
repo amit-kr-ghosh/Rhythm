@@ -23,6 +23,18 @@ export function trackedSubjects(subjects: Subject[]): Subject[] {
   return subjects.filter((s) => !s.deletedAt && !s.archived && (s.dailyTargetMin ?? 0) > 0).sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
+/**
+ * The overall daily and weekly study target, which is the sum of the per-subject targets (what Today and Analytics add up).
+ * A subject with no weekly target counts as seven days of its daily one.
+ */
+export function overallTargets(subjects: Subject[]): { dailyMin: number; weeklyMin: number } {
+  const tracked = trackedSubjects(subjects);
+  return {
+    dailyMin: tracked.reduce((a, s) => a + (s.dailyTargetMin ?? 0), 0),
+    weeklyMin: tracked.reduce((a, s) => a + ((s.weeklyTargetMin ?? 0) > 0 ? s.weeklyTargetMin! : (s.dailyTargetMin ?? 0) * 7), 0),
+  };
+}
+
 /** Subjects the user can record time against: every live, non-archived subject (with or without a daily target). */
 export function selectableSubjects(subjects: Subject[]): Subject[] {
   return subjects.filter((s) => !s.deletedAt && !s.archived).sort((a, b) => a.sortOrder - b.sortOrder);

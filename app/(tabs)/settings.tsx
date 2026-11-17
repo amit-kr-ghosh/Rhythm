@@ -2,6 +2,7 @@ import React from 'react';
 import { Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useApp } from '../../src/state/store';
+import { overallTargets } from '../../src/domain/study';
 import { Screen, PageHeader } from '../../src/components/ui';
 import { Group, NavRow } from '../../src/components/settings/parts';
 import { syncSummary } from '../../src/state/extra-settings';
@@ -15,6 +16,7 @@ export default function SettingsHome() {
   const router = useRouter();
   const prefs = useApp((s) => s.data.prefs);
   const notif = useApp((s) => s.data.notif);
+  const subjects = useApp((s) => s.data.subjects);
   const authUser = useApp((s) => s.auth);
   const sync = useApp((s) => s.sync);
   const go = (p: string) => () => router.push(p as never);
@@ -28,7 +30,7 @@ export default function SettingsHome() {
       <Group title="Personalise">
         <NavRow icon="contrast-outline" title="Appearance" value={`${THEME_LABEL[prefs.theme]} · week starts ${WEEK_LABEL[prefs.weekStart]}`} onPress={go('/settings/appearance')} />
         <NavRow icon="library-outline" title="Subjects" value="Add, edit or delete" onPress={go('/subjects')} />
-        <NavRow icon="flag-outline" title="Study targets" value={`${formatDuration(prefs.dailyStudyTargetMin)} / day · ${formatDuration(prefs.weeklyStudyTargetMin)} / week`} onPress={go('/settings/goals')} />
+        <NavRow icon="flag-outline" title="Study targets" value={(() => { const o = overallTargets(subjects); return o.dailyMin > 0 ? `${formatDuration(o.dailyMin)} / day · ${formatDuration(o.weeklyMin)} / week` : 'Set a target per subject'; })()} onPress={go('/settings/goals')} />
         <NavRow icon="timer-outline" title="Focus timer" value={`${selectableMode(prefs.timer.mode) === 'pomodoro' ? 'Pomodoro' : 'Stopwatch'} · ${prefs.timer.focusMin}/${prefs.timer.breakMin} min`} onPress={go('/settings/timer')} />
         <NavRow icon="notifications-outline" title="Notifications" value={notif.enabled ? 'On' : 'Off'} onPress={go('/settings/notifications')} last />
       </Group>
