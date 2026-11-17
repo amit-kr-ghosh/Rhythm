@@ -43,7 +43,7 @@ function surface(ev: AlertSource, late: boolean, forceSystem = false): void {
   if (!visible) {
     setAttention(ev.title);
     const t = s.timer;
-    const wanted = forceSystem || (t !== null && wantsSystemNotification(t, s.data.notif, s.data.prefs.timer.breakReminders));
+    const wanted = forceSystem || (t !== null && wantsSystemNotification(t, s.data.notif, s.data.prefs.timer.breakReminders, ev.kind === 'test' ? undefined : ev.kind));
     if (wanted) {
       const note = { id: `timer:${ev.id}`, title: ev.title, body: ev.body, data: { type: 'timer', id: t?.id ?? '' } };
       void claimEvent(ev.id, 'system').then((won) => { if (won) void presentNow(note); });

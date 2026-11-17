@@ -15,6 +15,10 @@ export type TimerConfig = {
   subjectId: string | null;
   occurrenceKey: string | null;
   taskId: string | null;
+  /** Focus time (ms) still needed to reach the subject's daily target when this timer started. Null/absent: no target to alert on. */
+  goalMs?: number | null;
+  /** Subject name for the target alert's text, captured at start so it still reads right if the subject is renamed mid-session. */
+  goalName?: string | null;
 };
 
 export type TimerState = TimerConfig & {

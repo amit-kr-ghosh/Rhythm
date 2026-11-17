@@ -125,3 +125,32 @@ test('sounds: the end of a break sounds different from the end of a focus block,
     assert.deepEqual(soundForEvent(id, 'test').notes, soundForEvent(id, 'focus_done').notes);
   }
 });
+
+import { goalOffsetMs } from '../src/domain/alerts';
+test('daily target alert: stopwatch fires when focus time left is used up', () => {
+  const t = { ...startTimer(cfg({ mode: 'stopwatch', focusMs: 25 * MIN, breakMs: 0 }), 'g', T0), goalMs: 30 * MIN, goalName: 'DSA' };
+  assert.equal(goalOffsetMs(t), 30 * MIN);
+  const e = boundariesUntil(t, 40 * MIN);
+  assert.deepEqual(e.map((x) => [x.kind, x.offsetMs]), [['goal_done', 30 * MIN]]);
+  assert.equal(e[0]!.title, 'DSA target reached');
+  assert.equal(nextTimerEvent(t, T0 + 5 * MIN)!.at, T0 + 30 * MIN, 'found even though it is past the usual lookahead');
+  assert.deepEqual(dueTimerEvents(t, T0 + 31 * MIN, new Set()).map((x) => x.kind), ['goal_done']);
+  assert.equal(dueTimerEvents(t, T0 + 31 * MIN, new Set([e[0]!.id])).length, 0, 'alerts once');
+});
+test('daily target alert: pomodoro breaks do not count toward the target', () => {
+  const t = { ...startTimer(cfg({ mode: 'pomodoro', focusMs: 25 * MIN, breakMs: 5 * MIN }), 'h', T0), goalMs: 60 * MIN };
+  assert.equal(goalOffsetMs(t), 70 * MIN); // 60 focus min + 2 breaks before the 3rd round ends
+  assert.equal(goalOffsetMs({ ...t, goalMs: 25 * MIN }), 25 * MIN, 'target at end of round 1 lands before its break');
+  assert.equal(goalOffsetMs({ ...t, goalMs: 10 * MIN }), 10 * MIN);
+  const kinds = boundariesUntil({ ...t, goalMs: 10 * MIN }, 30 * MIN).map((x) => x.kind);
+  assert.deepEqual(kinds, ['goal_done', 'focus_done', 'break_done']);
+});
+test('daily target alert: none when there is no target left, and it ignores break-reminder settings', () => {
+  const t = startTimer(cfg({ mode: 'stopwatch', focusMs: 25 * MIN, breakMs: 0 }), 'n', T0);
+  assert.equal(goalOffsetMs(t), null);
+  assert.equal(goalOffsetMs({ ...t, goalMs: 0 }), null);
+  assert.deepEqual(boundariesUntil(t, 10 ** 9), []);
+  const on = { enabled: true, breaks: false };
+  assert.equal(wantsSystemNotification({ mode: 'stopwatch' }, on, false, 'goal_done'), true);
+  assert.equal(wantsSystemNotification({ mode: 'stopwatch' }, { enabled: false, breaks: true }, true, 'goal_done'), false);
+});

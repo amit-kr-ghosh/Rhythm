@@ -5,7 +5,7 @@ import type {
 } from './types';
 import type { TimerState } from './timer';
 import { runningMs } from './timer';
-import { boundariesUntil, wantsSystemNotification } from './alerts';
+import { boundariesUntil, goalOffsetMs, wantsSystemNotification } from './alerts';
 
 export type Channel = 'activities' | 'study' | 'tasks' | 'goals' | 'breaks' | 'timer' | 'habits' | 'summary' | 'motivation';
 export type PlannedNotification = {
@@ -98,11 +98,12 @@ export const TIMER_LOOKAHEAD = 8;
  * from its in-page watcher instead).
  */
 export function planTimerNotifications(t: TimerState, now: number, s: NotificationSettings, breakReminders: boolean): PlannedNotification[] {
-  if (t.status !== 'running' || !wantsSystemNotification(t, s, breakReminders)) return [];
+  if (t.status !== 'running') return [];
   const r = runningMs(t, now);
   // Scan far enough ahead to collect TIMER_LOOKAHEAD boundaries beyond the current position.
   const cycle = t.focusMs + Math.max(0, t.breakMs);
-  const upcoming = boundariesUntil(t, r + (cycle > 0 ? cycle : t.focusMs) * (TIMER_LOOKAHEAD / 2 + 1)).filter((e) => e.offsetMs > r).slice(0, TIMER_LOOKAHEAD);
+  const upcoming = boundariesUntil(t, Math.max(r + (cycle > 0 ? cycle : t.focusMs) * (TIMER_LOOKAHEAD / 2 + 1), (goalOffsetMs(t) ?? 0) + 1))
+    .filter((e) => e.offsetMs > r && wantsSystemNotification(t, s, breakReminders, e.kind)).slice(0, TIMER_LOOKAHEAD);
   return upcoming.map((e) => ({
     id: `timer:${e.id}`, channel: 'timer' as Channel, at: now + (e.offsetMs - r), title: e.title, body: e.body, data: { type: 'timer', id: t.id },
   }));

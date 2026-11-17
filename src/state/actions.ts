@@ -20,7 +20,7 @@ import {
 } from '../domain/timer';
 import { buildManualSession, isDuplicateSession, overlappingSessions, toSession, type ManualEntryInput, type ManualResult } from '../domain/sessions';
 import { recordTargets } from '../domain/progress';
-import { overrideKey, overrideLogId, overrideLogStatus, type StudyStatus } from '../domain/study';
+import { overrideKey, overrideLogId, overrideLogStatus, subjectDay, type StudyStatus } from '../domain/study';
 import { encouragement } from '../domain/quotes';
 import { dailyTotalsToCsv, sessionsToCsv, toJsonExport } from '../domain/export';
 import { dailyFocus } from '../domain/analytics';
@@ -305,7 +305,11 @@ export async function startFocus(i: FocusStart): Promise<Result> {
   if (overlappingSessions(now, now + 1000, D().sessions).length > 0) {
     return { ok: false, errors: { general: 'This time overlaps a recorded session. Edit or delete that session first.' } };
   }
+  // Focus time still needed for this subject's daily target, so an alert can fire the moment it is reached.
+  const subj = i.subjectId ? D().subjects.find((x) => x.id === i.subjectId && !x.deletedAt) : undefined;
+  const day = subj ? subjectDay(today(), subj, D().sessions, D().prefs, D().logs) : null;
   const cfg: TimerConfig = {
+    goalMs: day && day.targetSec > 0 && day.remainingSec > 0 ? day.remainingSec * 1000 : null, goalName: subj?.name ?? null,
     mode: i.mode, focusMs: i.focusMin * 60_000, breakMs: i.breakMin * 60_000, subjectId: i.subjectId,
     occurrenceKey: i.occurrenceKey ?? null, taskId: i.taskId ?? null,
   };
